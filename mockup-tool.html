@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PI Marketing — PDP Mockup Studio</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  /* Dashed marker + badge horen bij het "geïnjecteerd"-verhaal en blijven ook
+     zichtbaar in presentatiemodus — dat ís de demo. */
+  .pim-marker { outline: 3px dashed var(--accent, #16a34a); outline-offset: 6px; border-radius: 6px; }
+  .pim-badge {
+    position: absolute; top: -34px; left: -6px; z-index: 30;
+    background: var(--accent, #16a34a); color: #fff; font-size: 11px; font-weight: 700;
+    letter-spacing: .02em; padding: 4px 12px; border-radius: 999px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.25); white-space: nowrap; pointer-events: none;
+  }
+  .pim-badge::before { content: '⚡ '; }
+  .draggable { cursor: grab; touch-action: none; }
+  .draggable.dragging { cursor: grabbing; opacity: .92; }
+  #bg-image { cursor: grab; max-width: none; }
+  #bg-image.panning { cursor: grabbing; }
+  /* Presentatiemodus: verberg editor-chrome, hou de demo-laag intact */
+  body.presenting #sidebar, body.presenting .edit-only { display: none !important; }
+  body.presenting #canvas-col { margin-left: 0 !important; }
+  input[type="range"] { accent-color: var(--accent, #16a34a); }
+  /* Off-canvas sidebar op smalle schermen */
+  #sidebar { transition: transform .25s ease; }
+  @media (max-width: 1023.98px) {
+    #sidebar { transform: translateX(-100%); }
+    body.sidebar-open #sidebar { transform: translateX(0); }
+  }
+</style>
+</head>
+<body class="bg-slate-100 min-h-screen" style="--accent:#16a34a">
+
+<!-- ══════════════════ SIDEBAR (editor) ══════════════════ -->
+<aside id="sidebar" class="fixed inset-y-0 left-0 w-80 bg-slate-900 text-slate-100 flex flex-col z-50 shadow-2xl">
+  <div class="p-5 border-b border-slate-700">
+    <div class="text-xl font-black tracking-tight">PI <span style="color:var(--accent)">Marketing</span></div>
+    <div class="text-xs text-slate-400 mt-1">PDP Mockup Studio — sleep onze dienstverlening op de webshop van je prospect</div>
+  </div>
+
+  <div class="flex-1 overflow-y-auto p-5 space-y-6 text-sm">
+    <!-- Stap 1: screenshot -->
+    <section>
+      <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">1 · PDP screenshot</h2>
+      <label class="block w-full text-center px-4 py-3 rounded-lg font-semibold cursor-pointer transition hover:opacity-90" style="background:var(--accent)">
+        Upload screenshot…
+        <input id="file-input" type="file" accept="image/*" class="hidden">
+      </label>
+      <p class="text-xs text-slate-500 mt-2">Tip: maak een full-page screenshot van de productpagina van je prospect.</p>
+
+      <!-- Zoom & uitsnede -->
+      <div class="mt-4 space-y-3 bg-slate-800/60 rounded-xl p-4">
+        <div class="text-xs font-bold text-slate-300">🔍 Zoom & uitsnede</div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Zoom <span id="zoom-label" class="text-slate-500">100%</span></label>
+          <input id="zoom-range" type="range" min="100" max="300" value="100" class="w-full">
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Hoogte uitsnede <span id="crop-label" class="text-slate-500">—</span></label>
+          <input id="crop-range" type="range" min="300" max="1600" value="800" class="w-full">
+        </div>
+        <p class="text-[11px] text-slate-500">Sleep de <b>achtergrond</b> zelf om het juiste deel van de pagina in beeld te brengen — de rest wordt afgesneden.</p>
+      </div>
+    </section>
+
+    <!-- Stap 2: prospect & huisstijl -->
+    <section class="space-y-3">
+      <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400">2 · Prospect & huisstijl</h2>
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">Naam prospect</label>
+        <input id="prospect-name" type="text" value="jullie webshop" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 focus:outline-none focus:border-slate-500">
+      </div>
+
+      <!-- Huisstijl-onderzoek -->
+      <div class="bg-slate-800/60 rounded-xl p-4 space-y-3">
+        <div class="text-xs font-bold text-slate-300">🎨 Huisstijl-onderzoek</div>
+        <div class="flex gap-2">
+          <input id="brand-url" type="text" placeholder="www.prospect.nl" class="flex-1 min-w-0 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2">
+          <button id="btn-brand" class="px-3 py-2 rounded-lg font-semibold transition hover:opacity-90 shrink-0" style="background:var(--accent)">Zoek</button>
+        </div>
+        <div id="brand-status" class="text-[11px] text-slate-500">Vul de website in — we halen automatisch de merk­kleuren op en passen de componenten aan.</div>
+        <div id="brand-swatches" class="flex flex-wrap gap-2"></div>
+        <div class="flex items-center gap-3 pt-1 border-t border-slate-700/60">
+          <label class="text-xs text-slate-400">Handmatig</label>
+          <input id="accent-color" type="color" value="#16a34a" class="h-8 w-14 rounded cursor-pointer bg-slate-800 border border-slate-700">
+        </div>
+      </div>
+    </section>
+
+    <!-- Stap 3: componenten -->
+    <section class="space-y-4">
+      <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400">3 · Componenten</h2>
+
+      <!-- Carrousel -->
+      <div class="bg-slate-800/60 rounded-xl p-4 space-y-3">
+        <label class="flex items-center justify-between cursor-pointer">
+          <span class="font-semibold">🛍️ Recommendation carrousel</span>
+          <input id="toggle-carousel" type="checkbox" checked class="w-4 h-4">
+        </label>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Titel</label>
+          <input id="carousel-title" type="text" value="Anderen bekeken ook" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2">
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Breedte <span id="carousel-width-label" class="text-slate-500">720px</span></label>
+          <input id="carousel-width" type="range" min="420" max="1100" value="720" class="w-full">
+        </div>
+        <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-300">
+          <input id="toggle-carousel-info" type="checkbox" class="w-4 h-4">
+          💡 Toon infokader
+        </label>
+        <textarea id="carousel-info-text" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs">Deze carrousel toont automatisch producten die passen bij het kijk- en koopgedrag van elke bezoeker. Volledig geautomatiseerd, in jullie huisstijl — goed voor een hogere orderwaarde.</textarea>
+      </div>
+
+      <!-- Popup -->
+      <div class="bg-slate-800/60 rounded-xl p-4 space-y-3">
+        <label class="flex items-center justify-between cursor-pointer">
+          <span class="font-semibold">✉️ Marketing automation pop-up</span>
+          <input id="toggle-popup" type="checkbox" checked class="w-4 h-4">
+        </label>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Kop</label>
+          <input id="popup-headline" type="text" value="Ontvang 10% korting" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2">
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Subtekst</label>
+          <input id="popup-sub" type="text" value="Schrijf je in voor de nieuwsbrief en ontvang direct 10% korting op je eerste bestelling." class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">CTA-knop</label>
+            <input id="popup-cta" type="text" value="Ja, ik wil korting" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Kortingscode</label>
+            <input id="popup-code" type="text" value="WELKOM10" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs text-slate-400 mb-1">Breedte <span id="popup-width-label" class="text-slate-500">400px</span></label>
+          <input id="popup-width" type="range" min="300" max="560" value="400" class="w-full">
+        </div>
+        <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-400">
+          <input id="toggle-dim" type="checkbox" class="w-4 h-4">
+          Achtergrond dimmen achter pop-up
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-300">
+          <input id="toggle-popup-info" type="checkbox" class="w-4 h-4">
+          💡 Toon infokader
+        </label>
+        <textarea id="popup-info-text" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs">Deze pop-up verschijnt alleen bij nieuwe bezoekers, op het juiste moment. Gemiddeld laat 3–6% van de bezoekers hier een e-mailadres achter — direct meetbaar in omzet.</textarea>
+      </div>
+    </section>
+
+    <!-- Stap 4: export -->
+    <section class="space-y-2">
+      <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400">4 · Presenteren & exporteren</h2>
+      <button id="btn-present" class="w-full px-4 py-2.5 rounded-lg font-semibold bg-slate-700 hover:bg-slate-600 transition">
+        🎬 Presentatiemodus <span class="text-slate-400 font-normal">(Esc = terug)</span>
+      </button>
+      <button id="btn-export" class="w-full px-4 py-2.5 rounded-lg font-semibold transition hover:opacity-90" style="background:var(--accent)">
+        ⬇️ Download mockup als PNG
+      </button>
+    </section>
+  </div>
+
+  <div class="p-4 border-t border-slate-800 text-[11px] text-slate-500">
+    Sleep de componenten op de gewenste plek. Alles met een gestippelde rand injecteren wij live — zonder verbouwing van de webshop.
+  </div>
+</aside>
+
+<!-- ══════════════════ CANVAS ══════════════════ -->
+<main id="canvas-col" class="lg:ml-80 min-h-screen flex flex-col">
+
+  <!-- PI Marketing banner -->
+  <div id="pim-banner" class="sticky top-0 z-40 text-white px-4 lg:px-6 py-3 flex items-center justify-between gap-3 shadow-lg" style="background:linear-gradient(90deg,#0f172a, #1e293b)">
+    <div class="flex items-center gap-3 min-w-0">
+      <button id="btn-menu" class="edit-only lg:hidden shrink-0 w-9 h-9 rounded-lg bg-slate-700 text-lg leading-none">☰</button>
+      <span class="font-black text-lg shrink-0">PI <span style="color:var(--accent)">Marketing</span></span>
+      <span class="hidden md:inline text-sm text-slate-300 truncate">⚡ Geoptimaliseerd door PI Marketing — dit is <b id="banner-prospect">jullie webshop</b> mét onze marketing automation</span>
+    </div>
+    <div class="hidden sm:flex items-center gap-2 text-xs shrink-0">
+      <span class="inline-block w-6 border-t-[3px] border-dashed" style="border-color:var(--accent)"></span>
+      <span class="text-slate-300">= geïnjecteerd door PI Marketing</span>
+    </div>
+  </div>
+
+  <!-- Werkgebied -->
+  <div class="flex-1 overflow-auto p-4 lg:p-8 flex justify-center">
+    <div id="stage" class="relative w-full max-w-5xl">
+
+      <!-- Lege staat -->
+      <div id="empty-state" class="edit-only border-4 border-dashed border-slate-300 rounded-2xl bg-white/60 min-h-[70vh] flex flex-col items-center justify-center text-center p-10">
+        <div class="text-6xl mb-4">🖼️</div>
+        <h2 class="text-xl font-bold text-slate-700">Upload een PDP-screenshot om te beginnen</h2>
+        <p class="text-slate-500 mt-2 max-w-md">Kies links een screenshot van de productpagina van je prospect. Zoom en positioneer de uitsnede, en sleep daarna de carrousel en de pop-up op de juiste plek.</p>
+      </div>
+
+      <!-- Mockup-viewport: dit wordt geëxporteerd. overflow-hidden = de uitsnede -->
+      <div id="mockup" class="relative hidden rounded-lg overflow-hidden shadow-2xl bg-white select-none" style="height:800px">
+        <img id="bg-image" src="" alt="" class="absolute top-0 left-0" style="width:100%" draggable="false">
+
+        <!-- Dim-laag onder de popup -->
+        <div id="dim-layer" class="absolute inset-0 bg-slate-900/50 hidden z-10 pointer-events-none"></div>
+
+        <!-- ── Component A: Recommendation carrousel ── -->
+        <div id="comp-carousel" class="draggable absolute z-20" style="left:5%; top:55%; width:720px;">
+          <div class="pim-marker relative bg-white rounded-xl p-5 shadow-xl">
+            <div class="pim-badge">Geïnjecteerd door PI Marketing</div>
+            <h3 id="carousel-title-out" class="text-lg font-extrabold text-slate-900 mb-3">Anderen bekeken ook</h3>
+            <div id="carousel-cards" class="flex gap-3"></div>
+            <div class="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white shadow-lg text-slate-700 font-bold flex items-center justify-center pointer-events-none">‹</div>
+            <div class="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white shadow-lg text-slate-700 font-bold flex items-center justify-center pointer-events-none">›</div>
+          </div>
+          <!-- Infokader -->
+          <div id="carousel-info" class="hidden absolute -top-2 left-full ml-5 w-60 bg-white rounded-xl shadow-2xl p-4 border-l-4" style="border-color:var(--accent)">
+            <div class="text-xs font-extrabold text-slate-900 mb-1">💡 Wat gebeurt hier?</div>
+            <p id="carousel-info-out" class="text-[11px] text-slate-600 leading-relaxed"></p>
+          </div>
+        </div>
+
+        <!-- ── Component B: Marketing automation pop-up ── -->
+        <div id="comp-popup" class="draggable absolute z-20" style="left:30%; top:12%; width:400px;">
+          <div class="pim-marker relative bg-white rounded-2xl shadow-2xl">
+            <div class="pim-badge">Geïnjecteerd door PI Marketing</div>
+            <div class="rounded-t-2xl px-7 pt-6 pb-5 text-white relative" style="background:var(--accent)">
+              <div class="absolute top-3.5 right-4 w-7 h-7 rounded-full bg-white/25 text-white text-sm font-semibold flex items-center justify-center">✕</div>
+              <h3 id="popup-headline-out" class="text-2xl font-extrabold leading-tight">Ontvang 10% korting</h3>
+              <p id="popup-sub-out" class="text-sm mt-1.5 opacity-90">Schrijf je in voor de nieuwsbrief en ontvang direct 10% korting op je eerste bestelling.</p>
+            </div>
+            <div class="px-7 py-6">
+              <div class="border-2 border-slate-200 rounded-lg px-4 py-2.5 text-slate-400 text-sm mb-3">jouw@emailadres.nl</div>
+              <div id="popup-cta-out" class="rounded-lg py-3 text-center text-white font-bold text-sm" style="background:var(--accent)">Ja, ik wil korting</div>
+              <p class="text-center text-xs text-slate-500 mt-3">Of gebruik direct code
+                <b id="popup-code-out" class="text-slate-800 bg-slate-100 border border-dashed border-slate-300 rounded px-1.5 py-0.5 tracking-wider">WELKOM10</b>
+              </p>
+            </div>
+          </div>
+          <!-- Infokader -->
+          <div id="popup-info" class="hidden absolute -top-2 left-full ml-5 w-60 bg-white rounded-xl shadow-2xl p-4 border-l-4" style="border-color:var(--accent)">
+            <div class="text-xs font-extrabold text-slate-900 mb-1">💡 Wat gebeurt hier?</div>
+            <p id="popup-info-out" class="text-[11px] text-slate-600 leading-relaxed"></p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+/* ════════════════════════════════════════════════════════════════
+   PI Marketing — PDP Mockup Studio
+   Eén bestand, geen build-stap. Upload → zoom → huisstijl → sleep →
+   presenteer/exporteer.
+   ════════════════════════════════════════════════════════════════ */
+
+const $ = (sel) => document.querySelector(sel);
+
+/* ── Dummy-producten voor de carrousel (CSS-getekend, werkt offline) ── */
+const DUMMY_PRODUCTS = [
+  { emoji: '🧴', naam: 'Hydraterende dagcrème SPF30', prijs: '€ 14,95', bg: 'linear-gradient(135deg,#fdf2f8,#fce7f3)' },
+  { emoji: '💊', naam: 'Vitamine D3 forte — 120 caps', prijs: '€ 9,99',  bg: 'linear-gradient(135deg,#eff6ff,#dbeafe)' },
+  { emoji: '🌿', naam: 'Bodylotion aloë vera 400 ml',  prijs: '€ 7,49',  bg: 'linear-gradient(135deg,#f0fdf4,#dcfce7)' },
+  { emoji: '🧼', naam: 'Handzeep navulling 3-pack',    prijs: '€ 5,95',  bg: 'linear-gradient(135deg,#fffbeb,#fef3c7)' },
+];
+
+function renderCarouselCards() {
+  $('#carousel-cards').innerHTML = DUMMY_PRODUCTS.map(p => `
+    <div class="flex-1 min-w-0 bg-white border border-slate-200 rounded-lg overflow-hidden flex flex-col">
+      <div class="aspect-square flex items-center justify-center text-4xl" style="background:${p.bg}">${p.emoji}</div>
+      <div class="p-2.5 flex flex-col gap-1 flex-1">
+        <p class="text-[11px] font-semibold text-slate-800 leading-snug line-clamp-2 min-h-[2.4em]">${p.naam}</p>
+        <div class="text-sm font-extrabold text-slate-900 mt-auto">${p.prijs}</div>
+        <div class="rounded-md py-1.5 text-center text-white text-[11px] font-bold" style="background:var(--accent)">Bekijk product</div>
+      </div>
+    </div>`).join('');
+}
+renderCarouselCards();
+
+/* ── Achtergrond: upload + zoom + pan + uitsnede ── */
+const bg = { zoom: 1, x: 0, y: 0 };
+
+function applyBg() {
+  const img = $('#bg-image');
+  const vw = $('#mockup').clientWidth;
+  const imgW = vw * bg.zoom;
+  const imgH = img.naturalWidth ? imgW * (img.naturalHeight / img.naturalWidth) : 0;
+  const vh = $('#mockup').clientHeight;
+  // pan clampen: afbeelding blijft de viewport bedekken waar mogelijk
+  bg.x = Math.min(0, Math.max(vw - imgW, bg.x));
+  bg.y = Math.min(0, Math.max(vh - imgH, bg.y));
+  img.style.width = imgW + 'px';
+  img.style.left = bg.x + 'px';
+  img.style.top = bg.y + 'px';
+}
+
+$('#file-input').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const img = $('#bg-image');
+    img.onload = () => {
+      $('#empty-state').classList.add('hidden');
+      $('#mockup').classList.remove('hidden');
+      // uitsnede-hoogte: standaard max 800px of de volledige beeldhoogte
+      const vw = $('#mockup').clientWidth;
+      const dispH = Math.round(vw * (img.naturalHeight / img.naturalWidth));
+      const crop = Math.min(dispH, 800);
+      $('#crop-range').max = Math.max(400, Math.min(dispH, 2400));
+      $('#crop-range').value = crop;
+      setCrop(crop);
+      bg.zoom = 1; bg.x = 0; bg.y = 0;
+      $('#zoom-range').value = 100;
+      $('#zoom-label').textContent = '100%';
+      applyBg();
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+function setCrop(h) {
+  $('#mockup').style.height = h + 'px';
+  $('#crop-label').textContent = h + 'px';
+  applyBg();
+}
+$('#crop-range').addEventListener('input', (e) => setCrop(+e.target.value));
+
+$('#zoom-range').addEventListener('input', (e) => {
+  const nieuw = +e.target.value / 100;
+  const vw = $('#mockup').clientWidth, vh = $('#mockup').clientHeight;
+  // zoom rond het midden van de uitsnede
+  const cx = (vw / 2 - bg.x) / bg.zoom, cy = (vh / 2 - bg.y) / bg.zoom;
+  bg.zoom = nieuw;
+  bg.x = vw / 2 - cx * nieuw;
+  bg.y = vh / 2 - cy * nieuw;
+  $('#zoom-label').textContent = e.target.value + '%';
+  applyBg();
+});
+
+// pan: sleep de achtergrondafbeelding zelf
+$('#bg-image').addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  const img = $('#bg-image');
+  const startX = e.clientX, startY = e.clientY, ox = bg.x, oy = bg.y;
+  img.classList.add('panning');
+  try { img.setPointerCapture(e.pointerId); } catch { /* synthetische events */ }
+  const move = (ev) => {
+    bg.x = ox + (ev.clientX - startX);
+    bg.y = oy + (ev.clientY - startY);
+    applyBg();
+  };
+  const up = (ev) => {
+    img.classList.remove('panning');
+    try { img.releasePointerCapture(ev.pointerId); } catch { /* al vrijgegeven */ }
+    window.removeEventListener('pointermove', move);
+    window.removeEventListener('pointerup', up);
+  };
+  window.addEventListener('pointermove', move);
+  window.addEventListener('pointerup', up);
+});
+
+/* ── Prospect & huisstijl ── */
+$('#prospect-name').addEventListener('input', (e) => {
+  $('#banner-prospect').textContent = e.target.value || 'jullie webshop';
+});
+function setAccent(kleur) {
+  document.body.style.setProperty('--accent', kleur);
+  $('#accent-color').value = kleur;
+}
+$('#accent-color').addEventListener('input', (e) => setAccent(e.target.value));
+
+/* Huisstijl-onderzoek: haal merkkleuren op via een CORS-proxy.
+   Bronnen (in volgorde van gewicht): <meta theme-color>, dominante
+   favicon-kleuren, meest gebruikte hexkleuren in de HTML.
+   Meerdere proxies: publieke CORS-proxies vallen geregeld uit. */
+const PROXIES = [
+  (u) => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
+  (u) => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+];
+
+async function fetchViaProxy(url, ms) {
+  let laatsteFout;
+  for (const proxy of PROXIES) {
+    try {
+      const r = await metTimeout(fetch(proxy(url)), ms);
+      if (r.ok) return { response: r, proxy };
+    } catch (e) { laatsteFout = e; }
+  }
+  throw laatsteFout || new Error('geen proxy beschikbaar');
+}
+
+function hexNaarRgb(hex) {
+  const m = hex.replace('#', '');
+  const v = m.length === 3 ? m.split('').map(c => c + c).join('') : m;
+  return [parseInt(v.slice(0, 2), 16), parseInt(v.slice(2, 4), 16), parseInt(v.slice(4, 6), 16)];
+}
+function rgbNaarHex(r, g, b) {
+  return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+}
+function verzadiging([r, g, b]) {
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  return max === 0 ? 0 : (max - min) / max;
+}
+function bruikbareKleur(rgb) {
+  const [r, g, b] = rgb;
+  const helderheid = (r + g + b) / 3;
+  return verzadiging(rgb) > 0.25 && helderheid > 30 && helderheid < 235;
+}
+
+async function metTimeout(promise, ms) {
+  return Promise.race([promise, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+}
+
+async function onderzoekHuisstijl() {
+  let url = $('#brand-url').value.trim();
+  if (!url) return;
+  if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+  const status = $('#brand-status');
+  const swatches = $('#brand-swatches');
+  status.textContent = 'Bezig met onderzoeken… (kan ±10 sec duren)';
+  swatches.innerHTML = '';
+
+  const kandidaten = []; // {hex, score, bron}
+  let doc = null;
+
+  // 1) HTML ophalen: theme-color + hex-frequentie
+  let werkendeProxy = PROXIES[0];
+  try {
+    const { response, proxy } = await fetchViaProxy(url, 12000);
+    werkendeProxy = proxy;
+    const html = await response.text();
+    doc = new DOMParser().parseFromString(html, 'text/html');
+    const theme = doc.querySelector('meta[name="theme-color"]')?.getAttribute('content');
+    if (theme && /^#[0-9a-f]{3,6}$/i.test(theme.trim())) {
+      kandidaten.push({ hex: theme.trim().toLowerCase(), score: 1000, bron: 'theme-color' });
+    }
+    const teller = {};
+    for (const h of (html.match(/#[0-9a-f]{6}\b/gi) || [])) {
+      const hex = h.toLowerCase();
+      teller[hex] = (teller[hex] || 0) + 1;
+    }
+    for (const [hex, n] of Object.entries(teller)) {
+      const rgb = hexNaarRgb(hex);
+      if (bruikbareKleur(rgb)) kandidaten.push({ hex, score: n * verzadiging(rgb), bron: 'css' });
+    }
+  } catch { /* site niet bereikbaar via proxy — favicon kan alsnog lukken */ }
+
+  // 2) Favicon: dominante kleuren via canvas
+  try {
+    const origin = new URL(url).origin;
+    let iconUrl = origin + '/favicon.ico';
+    const link = doc?.querySelector('link[rel*="icon"]')?.getAttribute('href');
+    if (link) iconUrl = new URL(link, url).href;
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    await metTimeout(new Promise((res, rej) => {
+      img.onload = res; img.onerror = rej;
+      img.src = werkendeProxy(iconUrl);
+    }), 10000);
+    const c = document.createElement('canvas');
+    c.width = c.height = 32;
+    const ctx = c.getContext('2d');
+    ctx.drawImage(img, 0, 0, 32, 32);
+    const data = ctx.getImageData(0, 0, 32, 32).data;
+    const emmers = {};
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] < 200) continue;
+      const rgb = [data[i], data[i + 1], data[i + 2]];
+      if (!bruikbareKleur(rgb)) continue;
+      const sleutel = rgb.map(v => Math.round(v / 24) * 24).join(',');
+      emmers[sleutel] = (emmers[sleutel] || 0) + 1;
+    }
+    for (const [sleutel, n] of Object.entries(emmers)) {
+      const [r, g, b] = sleutel.split(',').map(Number);
+      kandidaten.push({ hex: rgbNaarHex(r, g, b), score: 400 + n, bron: 'favicon' });
+    }
+  } catch { /* geen favicon te lezen */ }
+
+  if (!kandidaten.length) {
+    status.textContent = '⚠️ Geen kleuren gevonden (site blokkeert de proxy of is offline). Kies de kleur handmatig hieronder.';
+    return;
+  }
+
+  // Dedupliceren op vergelijkbare kleuren, hoogste score wint
+  kandidaten.sort((a, b) => b.score - a.score);
+  const top = [];
+  for (const k of kandidaten) {
+    const rgb = hexNaarRgb(k.hex);
+    const dubbel = top.some(t => {
+      const t2 = hexNaarRgb(t.hex);
+      return Math.abs(rgb[0] - t2[0]) + Math.abs(rgb[1] - t2[1]) + Math.abs(rgb[2] - t2[2]) < 90;
+    });
+    if (!dubbel) top.push(k);
+    if (top.length >= 6) break;
+  }
+
+  swatches.innerHTML = top.map((k, i) => `
+    <button data-hex="${k.hex}" title="${k.hex} (${k.bron})"
+      class="w-9 h-9 rounded-lg border-2 transition hover:scale-110 ${i === 0 ? 'border-white' : 'border-slate-600'}"
+      style="background:${k.hex}"></button>`).join('');
+  swatches.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      setAccent(btn.dataset.hex);
+      swatches.querySelectorAll('button').forEach(b => b.classList.replace('border-white', 'border-slate-600'));
+      btn.classList.replace('border-slate-600', 'border-white');
+    });
+  });
+  setAccent(top[0].hex);
+  status.textContent = `✓ ${top.length} merkkleuren gevonden — beste match toegepast. Klik een swatch om te wisselen.`;
+}
+$('#btn-brand').addEventListener('click', onderzoekHuisstijl);
+$('#brand-url').addEventListener('keydown', (e) => { if (e.key === 'Enter') onderzoekHuisstijl(); });
+
+/* ── Componenten: toggles, teksten, breedtes, infokaders ── */
+const bindText = (inputSel, outSel) => {
+  const sync = () => { $(outSel).textContent = $(inputSel).value; };
+  $(inputSel).addEventListener('input', sync);
+  sync();
+};
+bindText('#carousel-title', '#carousel-title-out');
+bindText('#popup-headline', '#popup-headline-out');
+bindText('#popup-sub', '#popup-sub-out');
+bindText('#popup-cta', '#popup-cta-out');
+bindText('#popup-code', '#popup-code-out');
+bindText('#carousel-info-text', '#carousel-info-out');
+bindText('#popup-info-text', '#popup-info-out');
+
+$('#toggle-carousel').addEventListener('change', (e) => $('#comp-carousel').classList.toggle('hidden', !e.target.checked));
+$('#toggle-popup').addEventListener('change', (e) => {
+  $('#comp-popup').classList.toggle('hidden', !e.target.checked);
+  syncDim();
+});
+$('#toggle-dim').addEventListener('change', syncDim);
+function syncDim() {
+  const aan = $('#toggle-dim').checked && $('#toggle-popup').checked;
+  $('#dim-layer').classList.toggle('hidden', !aan);
+}
+$('#toggle-carousel-info').addEventListener('change', (e) => $('#carousel-info').classList.toggle('hidden', !e.target.checked));
+$('#toggle-popup-info').addEventListener('change', (e) => $('#popup-info').classList.toggle('hidden', !e.target.checked));
+
+const bindWidth = (inputSel, labelSel, compSel) => {
+  $(inputSel).addEventListener('input', (e) => {
+    $(labelSel).textContent = e.target.value + 'px';
+    $(compSel).style.width = e.target.value + 'px';
+  });
+};
+bindWidth('#carousel-width', '#carousel-width-label', '#comp-carousel');
+bindWidth('#popup-width', '#popup-width-label', '#comp-popup');
+
+/* ── Drag & drop componenten (pointer events; posities in %) ── */
+function makeDraggable(el) {
+  el.addEventListener('pointerdown', (e) => {
+    e.stopPropagation();
+    const mockup = $('#mockup');
+    const startX = e.clientX, startY = e.clientY;
+    const startLeft = el.offsetLeft, startTop = el.offsetTop;
+    el.classList.add('dragging');
+    try { el.setPointerCapture(e.pointerId); } catch { /* synthetische events */ }
+
+    const move = (ev) => {
+      const rect = mockup.getBoundingClientRect();
+      if (rect.width < 50) return; // mockup (nog) niet zichtbaar
+      let left = startLeft + (ev.clientX - startX);
+      let top  = startTop  + (ev.clientY - startY);
+      left = Math.max(-40, Math.min(left, rect.width - 80));
+      top  = Math.max(-20, Math.min(top, rect.height - 60));
+      el.style.left = (left / rect.width * 100) + '%';
+      el.style.top  = (top / rect.height * 100) + '%';
+    };
+    const up = (ev) => {
+      el.classList.remove('dragging');
+      try { el.releasePointerCapture(ev.pointerId); } catch { /* al vrijgegeven */ }
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  });
+}
+makeDraggable($('#comp-carousel'));
+makeDraggable($('#comp-popup'));
+
+/* ── Presentatiemodus, sidebar-toggle & PNG-export ── */
+$('#btn-present').addEventListener('click', () => {
+  document.body.classList.add('presenting');
+  document.body.classList.remove('sidebar-open');
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') document.body.classList.remove('presenting');
+});
+$('#btn-menu').addEventListener('click', () => document.body.classList.toggle('sidebar-open'));
+
+$('#btn-export').addEventListener('click', async () => {
+  if ($('#mockup').classList.contains('hidden')) {
+    alert('Upload eerst een PDP-screenshot.');
+    return;
+  }
+  const btn = $('#btn-export');
+  const orig = btn.textContent;
+  btn.textContent = 'Bezig met exporteren…';
+  try {
+    const canvas = await html2canvas($('#mockup'), { scale: 2, useCORS: true, logging: false });
+    const a = document.createElement('a');
+    const naam = ($('#prospect-name').value || 'prospect').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    a.download = `pi-marketing-mockup-${naam}.png`;
+    a.href = canvas.toDataURL('image/png');
+    a.click();
+  } catch (err) {
+    alert('Export mislukt (html2canvas niet geladen?). Gebruik anders presentatiemodus + een OS-screenshot.');
+  } finally {
+    btn.textContent = orig;
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "name": "Dille & Kamille",
+  "url": "https://www.dille-kamille.nl/uitlekbakje-fruit-aardewerk-citroenen-o18-cm-00043431.html",
+  "catalogUrl": "https://www.dille-kamille.nl/keuken",
+  "popup": {
+    "headline": "Ontvang 10% korting",
+    "sub": "Schrijf je in voor de nieuwsbrief en ontvang direct 10% korting op je eerste bestelling.",
+    "cta": "Ja, ik wil korting",
+    "code": "WELKOM10"
+  },
+  "stickyBar": { "text": "🚚 Voor 22:00 besteld = morgen in huis · Gratis verzending vanaf €50", "cta": "Shop nu" },
+  "socialProof": { "text": "23 anderen bekeken dit product vandaag" },
+  "carousel": { "title": "Anderen bekeken ook" }
+}

@@ -1,0 +1,18 @@
+{
+  "name": "NAAM PROSPECT",
+  "url": "https://www.prospect.nl/een-productpagina",
+  "catalogUrl": "https://www.prospect.nl/een-categoriepagina",
+
+  "_uitleg": "Alles hieronder is optioneel. accentColor wordt anders automatisch van de koopknop gedetecteerd. Zet een blok op false om het weg te laten (bijv. \"stickyBar\": false). Vul \"recommendations\" alleen handmatig als scrapen te weinig oplevert: [{\"title\", \"img\", \"price\"}].",
+
+  "accentColor": null,
+  "popup": {
+    "headline": "Ontvang 10% korting",
+    "sub": "Schrijf je in voor de nieuwsbrief en ontvang direct 10% korting op je eerste bestelling.",
+    "cta": "Ja, ik wil korting",
+    "code": "WELKOM10"
+  },
+  "stickyBar": { "text": "🚚 Voor 22:00 besteld = morgen in huis · Gratis verzending vanaf €50", "cta": "Shop nu" },
+  "socialProof": { "text": "23 anderen bekeken dit product vandaag" },
+  "carousel": { "title": "Anderen bekeken ook" }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "De Online Drogist",
+  "url": "https://www.deonlinedrogist.nl/drogist/vitals-ultra-pure-epa-dha-1000mg-60sg.htm",
+  "catalogUrl": "https://www.deonlinedrogist.nl/omega-vetzuren/",
+  "popup": {
+    "headline": "Ontvang 10% korting",
+    "sub": "Schrijf je in voor de nieuwsbrief en ontvang direct 10% korting op je eerste bestelling.",
+    "cta": "Ja, ik wil korting",
+    "code": "WELKOM10"
+  },
+  "stickyBar": { "text": "🚚 Vandaag voor 21:30 besteld = morgen in huis · Gratis verzending vanaf €25", "cta": "Shop nu" },
+  "socialProof": { "text": "23 anderen bekeken dit product vandaag" },
+  "carousel": { "title": "Anderen bekeken ook" }
+}
