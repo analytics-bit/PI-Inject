@@ -19,14 +19,23 @@ function blobsStore() {
 // handler: een functie uit lib/api.js; opts.wait = wachten tot de job klaar is (background function)
 export function netlifyHandler(name, opts = {}) {
   return async (request) => {
-    const url = new URL(request.url);
-    const headers = Object.fromEntries(request.headers);
-    let body = null;
-    if (request.method === 'POST') {
-      try { body = JSON.parse((await request.text()) || 'null'); } catch { body = null; }
+    try {
+      const url = new URL(request.url);
+      const headers = Object.fromEntries(request.headers);
+      let body = null;
+      if (request.method === 'POST') {
+        try { body = JSON.parse((await request.text()) || 'null'); } catch { body = null; }
+      }
+      const secure = url.protocol === 'https:' || headers['x-forwarded-proto'] === 'https';
+      // login en session hebben geen opslag nodig: zo blijft inloggen werken als Blobs hapert
+      const store = name === 'login' || name === 'session' ? null : blobsStore();
+      const r = await api[name](store, { method: request.method, headers, query: Object.fromEntries(url.searchParams), body }, { secure, ...opts });
+      return new Response(r.body, { status: r.status, headers: r.headers });
+    } catch (err) {
+      console.error(`[${name}]`, err);
+      return new Response(JSON.stringify({ error: `Serverfout in ${name}: ${String((err && err.message) || err).slice(0, 200)}` }), {
+        status: 500, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+      });
     }
-    const secure = url.protocol === 'https:' || headers['x-forwarded-proto'] === 'https';
-    const r = await api[name](blobsStore(), { method: request.method, headers, query: Object.fromEntries(url.searchParams), body }, { secure, ...opts });
-    return new Response(r.body, { status: r.status, headers: r.headers });
   };
 }

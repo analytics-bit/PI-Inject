@@ -155,7 +155,7 @@ $('loginForm').addEventListener('submit', async e => {
   $('loginErr').textContent = '';
   const r = await post('login', { password: $('pw').value });
   if (r.ok) { $('login').style.display = 'none'; showApp(); }
-  else $('loginErr').textContent = (r.data && r.data.error) || 'Inloggen mislukt';
+  else $('loginErr').textContent = (r.data && r.data.error) || `Inloggen mislukt (serverantwoord ${r.status}, geen JSON — check de Netlify function logs)`;
 });
 function showApp() { $('app').style.display = 'grid'; loadHistory(); }
 

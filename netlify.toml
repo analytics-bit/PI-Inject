@@ -10,6 +10,8 @@
   node_bundler = "esbuild"
   # Playwright en de Chromium-loader niet meebundelen, maar als pakket meeleveren
   external_node_modules = ["@sparticuz/chromium-min", "playwright-core"]
+  # Expliciet meeleveren: zonder dit ontbrak playwright-core in /var/task/node_modules (42 MB totaal)
+  included_files = ["node_modules/**"]
 
 # De pagina praat altijd met /api/*; hier wordt dat naar de functions gerouteerd.
 [[redirects]]
