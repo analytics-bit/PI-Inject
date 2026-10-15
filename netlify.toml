@@ -1,0 +1,31 @@
+[build.environment]
+  NODE_VERSION = "22"
+  AWS_LAMBDA_JS_RUNTIME = "nodejs22.x"
+
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+  # Playwright en de Chromium-loader niet meebundelen, maar als pakket meeleveren
+  external_node_modules = ["@sparticuz/chromium-min", "playwright-core"]
+
+# De pagina praat altijd met /api/*; hier wordt dat naar de functions gerouteerd.
+[[redirects]]
+  from = "/api/start"
+  to = "/.netlify/functions/generate-background"
+  status = 200
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "same-origin"
+    X-Robots-Tag = "noindex, nofollow"

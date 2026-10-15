@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>PDP Demo Generator — PI Marketing</title>
+<style>
+  :root {
+    --bg: #f4f6f9; --card: #fff; --ink: #1a1f2b; --muted: #5a6270; --line: #e1e5ec;
+    --brand: #16a34a; --brand-ink: #fff; --nav: #12192b; --danger: #b42318; --warn-bg: #fff7ed;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0e1320; --card: #171e30; --ink: #e8ecf4; --muted: #9aa5ba; --line: #2a3350; --nav: #090d18; --warn-bg: #2a2012; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  header { background: var(--nav); color: #fff; padding: 14px 24px; display: flex; align-items: center; gap: 12px; }
+  header b { font-size: 17px; } header b span { color: var(--brand); }
+  header small { color: #9aa5ba; }
+  main { max-width: 1180px; margin: 0 auto; padding: 24px 16px 60px; display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px; }
+  .card + .card { margin-top: 16px; }
+  h2 { font-size: 15px; margin: 0 0 12px; }
+  label { display: block; font-size: 13px; font-weight: 600; margin: 12px 0 4px; }
+  label small { font-weight: 400; color: var(--muted); }
+  input[type=text], input[type=url], input[type=password], textarea {
+    width: 100%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); font: inherit;
+  }
+  input:focus, textarea:focus { outline: 2px solid var(--brand); outline-offset: 1px; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .check { display: flex; gap: 8px; align-items: flex-start; font-weight: 400; font-size: 13.5px; margin-top: 12px; }
+  button { font: inherit; font-weight: 700; border: 0; border-radius: 8px; padding: 10px 16px; cursor: pointer; background: var(--brand); color: var(--brand-ink); }
+  button.secondary { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+  button:disabled { opacity: .5; cursor: default; }
+  button.full { width: 100%; margin-top: 16px; }
+  .hint { color: var(--muted); font-size: 12.5px; margin: 6px 0 0; }
+  .err { color: var(--danger); font-size: 13.5px; margin-top: 10px; }
+  .log { background: #0b1020; color: #cfe3d4; font: 12.5px/1.55 ui-monospace, Consolas, monospace; padding: 12px 14px; border-radius: 8px; max-height: 220px; overflow: auto; white-space: pre-wrap; }
+  .state { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; margin-bottom: 10px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--brand); }
+  .dot.run { animation: pulse 1s infinite alternate; } .dot.err { background: var(--danger); }
+  @keyframes pulse { from { opacity: .3 } to { opacity: 1 } }
+  .persona { background: var(--warn-bg); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; font-size: 14px; }
+  .persona h3 { margin: 0 0 4px; font-size: 14px; } .persona ul { margin: 4px 0 0; padding-left: 18px; color: var(--muted); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+  .shots { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  .shot { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #fff; }
+  .shot img { display: block; width: 100%; height: 150px; object-fit: cover; object-position: top; }
+  .shot div { padding: 8px 10px; font-size: 12.5px; display: flex; justify-content: space-between; gap: 8px; background: var(--card); }
+  a { color: var(--brand); font-weight: 600; text-decoration: none; } a:hover { text-decoration: underline; }
+  .hist { list-style: none; margin: 0; padding: 0; }
+  .hist li { padding: 8px 0; border-top: 1px solid var(--line); cursor: pointer; font-size: 13.5px; }
+  .hist li:first-child { border-top: 0; } .hist li:hover b { text-decoration: underline; }
+  .hist small { display: block; color: var(--muted); }
+  #login { max-width: 360px; margin: 80px auto; display: none; }
+  #app { display: none; }
+  .hide { display: none !important; }
+</style>
+</head>
+<body>
+<header><b>PI <span>Marketing</span></b><small>PDP Demo Generator</small></header>
+
+<div id="login" class="card">
+  <h2>Inloggen</h2>
+  <form id="loginForm">
+    <label for="pw">Wachtwoord</label>
+    <input id="pw" type="password" autocomplete="current-password" required autofocus>
+    <button class="full">Inloggen</button>
+    <div class="err" id="loginErr"></div>
+  </form>
+</div>
+
+<main id="app">
+  <section>
+    <form class="card" id="form">
+      <h2>Nieuwe demo</h2>
+      <label for="name">Naam prospect</label>
+      <input id="name" type="text" maxlength="80" required placeholder="Gabor Store">
+      <label for="url">PDP-URL <small>(één productpagina)</small></label>
+      <input id="url" type="url" required placeholder="https://www.prospect.nl/product">
+      <label for="catalogUrl">Categorie-URL <small>(optioneel, voor de carrousel)</small></label>
+      <input id="catalogUrl" type="url" placeholder="https://www.prospect.nl/categorie">
+      <label class="check"><input type="checkbox" id="autoCopy" checked> <span>Teksten automatisch op een persona schrijven <small>(AI bepaalt producttype en doelgroep)</small></span></label>
+      <label class="check"><input type="checkbox" id="customAccent"> <span>Accentkleur zelf kiezen <small>(anders van de koopknop)</small></span></label>
+      <input id="accent" type="color" value="#16a34a" class="hide" style="margin-top:6px;height:36px;width:80px;padding:2px">
+      <button class="full" id="go">Genereer demo</button>
+      <div class="err" id="formErr"></div>
+      <p class="hint">Een run duurt ongeveer 1 à 2 minuten.</p>
+    </form>
+    <div class="card"><h2>Eerdere demo's</h2><ul class="hist" id="hist"><li><small>Laden…</small></li></ul></div>
+  </section>
+
+  <section id="out">
+    <div class="card" id="empty"><h2>Resultaat</h2><p class="hint">Vul links een productpagina in en start de generator. Je resultaat verschijnt hier.</p></div>
+
+    <div class="card hide" id="progress">
+      <div class="state"><span class="dot run" id="dot"></span><span id="stateText">Bezig…</span></div>
+      <div class="log" id="log"></div>
+    </div>
+
+    <div class="card hide" id="result">
+      <h2 id="resultTitle">Resultaat</h2>
+      <div class="persona hide" id="persona"></div>
+      <div id="files" class="shots" style="margin-top:14px"></div>
+    </div>
+
+    <div class="card hide" id="editor">
+      <h2>Teksten aanpassen</h2>
+      <p class="hint" style="margin-top:-6px">Pas aan wat je wilt en genereer opnieuw: de pagina wordt opnieuw opgehaald met jouw teksten.</p>
+      <div class="grid2">
+        <div><label>Popup: kop</label><input type="text" data-k="popup.headline"></div>
+        <div><label>Popup: knop</label><input type="text" data-k="popup.cta"></div>
+      </div>
+      <label>Popup: tekst</label><textarea rows="2" data-k="popup.sub"></textarea>
+      <div class="grid2">
+        <div><label>Popup: kortingscode</label><input type="text" data-k="popup.code"></div>
+        <div><label>Carrousel: titel</label><input type="text" data-k="carousel.title"></div>
+        <div><label>Sticky bar: tekst</label><input type="text" data-k="stickyBar.text"></div>
+        <div><label>Sticky bar: knop</label><input type="text" data-k="stickyBar.cta"></div>
+      </div>
+      <label>Social proof</label><input type="text" data-k="socialProof.text">
+      <p class="hint">Let op: kortingspercentage, code en het aantal bezoekers zijn voorbeeldwaarden voor de demo.</p>
+      <button class="full" id="regen">Opnieuw genereren met mijn teksten</button>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+let currentJob = null, pollTimer = null, lastInput = null;
+
+async function api(path, opts = {}) {
+  const res = await fetch('/api/' + path, { credentials: 'same-origin', ...opts });
+  let data = null; try { data = await res.json(); } catch {}
+  return { ok: res.ok, status: res.status, data };
+}
+const post = (path, body) => api(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
+function el(tag, props = {}, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(props)) k === 'class' ? e.className = v : e.setAttribute(k, v);
+  for (const k of kids) e.append(k);
+  return e;
+}
+
+/* ---------- inloggen ---------- */
+async function boot() {
+  const s = await api('session');
+  if (s.ok) { showApp(); } else { $('login').style.display = 'block'; }
+}
+$('loginForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  $('loginErr').textContent = '';
+  const r = await post('login', { password: $('pw').value });
+  if (r.ok) { $('login').style.display = 'none'; showApp(); }
+  else $('loginErr').textContent = (r.data && r.data.error) || 'Inloggen mislukt';
+});
+function showApp() { $('app').style.display = 'grid'; loadHistory(); }
+
+/* ---------- formulier ---------- */
+$('customAccent').addEventListener('change', e => $('accent').classList.toggle('hide', !e.target.checked));
+
+function readForm() {
+  const input = { name: $('name').value.trim(), url: $('url').value.trim(), catalogUrl: $('catalogUrl').value.trim(), autoCopy: $('autoCopy').checked };
+  if ($('customAccent').checked) input.accentColor = $('accent').value;
+  return input;
+}
+$('form').addEventListener('submit', e => { e.preventDefault(); start(readForm()); });
+
+$('regen').addEventListener('click', () => {
+  const overrides = {};
+  document.querySelectorAll('#editor [data-k]').forEach(i => {
+    const [b, f] = i.dataset.k.split('.');
+    (overrides[b] = overrides[b] || {})[f] = i.value;
+  });
+  start({ ...(lastInput || readForm()), autoCopy: false, overrides });
+});
+
+/* ---------- job starten en volgen ---------- */
+async function start(input) {
+  $('formErr').textContent = '';
+  const id = crypto.randomUUID();
+  lastInput = input;
+  setBusy(true);
+  ['empty', 'result', 'editor'].forEach(x => $(x).classList.add('hide'));
+  $('progress').classList.remove('hide');
+  $('log').textContent = 'Starten…';
+  setState('run', 'Bezig…');
+  const r = await post('start', { id, ...input });
+  if (!r.ok) { fail((r.data && r.data.error) || 'Starten mislukt'); return; }
+  currentJob = id;
+  const t0 = Date.now();
+  clearInterval(pollTimer);
+  pollTimer = setInterval(() => poll(id, t0), 2000);
+  poll(id, t0);
+}
+
+async function poll(id, t0) {
+  if (id !== currentJob) return;
+  const r = await api('status?id=' + encodeURIComponent(id));
+  if (r.status === 401) { location.reload(); return; }
+  if (r.status === 404) {
+    if (Date.now() - t0 > 90000) fail('De server reageert niet. Probeer het nog eens.');
+    else $('log').textContent = 'Wachten tot de server de taak oppakt…';
+    return;
+  }
+  if (!r.ok) return;
+  const s = r.data;
+  $('log').textContent = (s.log || []).join('\n');
+  $('log').scrollTop = 1e9;
+  const secs = Math.round((Date.now() - s.startedAt) / 1000);
+  if (s.state === 'running') setState('run', `Bezig… ${secs}s`);
+  else if (s.state === 'error') fail(s.error || 'Er ging iets mis');
+  else if (s.state === 'done') { clearInterval(pollTimer); setBusy(false); setState('ok', 'Klaar'); showResult(s); loadHistory(); }
+  if (Date.now() - s.startedAt > 16 * 60 * 1000 && s.state === 'running') fail('De taak duurt te lang en is waarschijnlijk afgebroken.');
+}
+
+function fail(msg) {
+  clearInterval(pollTimer);
+  setBusy(false);
+  setState('err', 'Mislukt');
+  $('formErr').textContent = msg;
+}
+function setBusy(b) { $('go').disabled = b; $('regen').disabled = b; }
+function setState(kind, text) {
+  $('dot').className = 'dot ' + (kind === 'run' ? 'run' : kind === 'err' ? 'err' : '');
+  $('stateText').textContent = text;
+}
+
+/* ---------- resultaat tonen ---------- */
+const LABELS = {
+  '01-popup.png': 'Hero: PDP met popup', '02-fullpage.png': 'Volledige pagina', '03-detail-carousel.png': 'Carrousel',
+  '03-detail-popup.png': 'Popup', '03-detail-socialproof.png': 'Social proof', '03-detail-stickybar.png': 'Sticky bar',
+  'onepager.pdf': 'One-pager (PDF)', 'onepager.png': 'One-pager (PNG)', 'onepager.html': 'One-pager (HTML)',
+};
+const fileUrl = (id, name, dl) => `/api/file?id=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}${dl ? '&download=1' : ''}`;
+
+function showResult(s) {
+  $('result').classList.remove('hide');
+  $('resultTitle').textContent = `Demo voor ${s.name}`;
+
+  const p = $('persona'); p.replaceChildren();
+  if (s.persona && s.persona.name) {
+    p.classList.remove('hide');
+    p.append(el('h3', {}, `Persona: ${s.persona.name}${s.persona.productType ? ' · ' + s.persona.productType : ''}`));
+    if (s.persona.description) p.append(el('div', {}, s.persona.description));
+    for (const [title, list] of [['Wat ze belangrijk vinden', s.persona.motivations], ['Waar ze twijfelen', s.persona.objections]]) {
+      if (Array.isArray(list) && list.length) { p.append(el('div', { style: 'margin-top:6px;font-weight:600' }, title), el('ul', {}, ...list.map(x => el('li', {}, String(x))))); }
+    }
+  } else p.classList.add('hide');
+
+  const files = $('files'); files.replaceChildren();
+  const order = Object.keys(LABELS);
+  const sorted = (s.files || []).filter(f => LABELS[f.name]).sort((a, b) => order.indexOf(a.name) - order.indexOf(b.name));
+  for (const f of sorted) {
+    const isImg = f.name.endsWith('.png');
+    const view = el('a', { href: fileUrl(s.id, f.name), target: '_blank', rel: 'noopener' }, 'Openen');
+    const dl = el('a', { href: fileUrl(s.id, f.name, true) }, 'Download');
+    const thumb = isImg ? el('img', { src: fileUrl(s.id, f.name), alt: LABELS[f.name], loading: 'lazy' }) : el('div', { style: 'height:60px;display:flex;align-items:center;font-size:30px;justify-content:center;background:var(--bg)' }, f.name.endsWith('.pdf') ? '📄' : '🧾');
+    files.append(el('div', { class: 'shot' }, thumb, el('div', {}, el('span', {}, LABELS[f.name]), el('span', {}, view, ' · ', dl))));
+  }
+
+  if (s.copy) {
+    $('editor').classList.remove('hide');
+    document.querySelectorAll('#editor [data-k]').forEach(i => {
+      const [b, f] = i.dataset.k.split('.');
+      i.value = (s.copy[b] && s.copy[b][f]) || '';
+    });
+  }
+}
+
+/* ---------- geschiedenis ---------- */
+async function loadHistory() {
+  const r = await api('list');
+  const ul = $('hist'); ul.replaceChildren();
+  const items = (r.ok && r.data.items) || [];
+  if (!items.length) { ul.append(el('li', {}, el('small', {}, 'Nog geen demo\'s'))); return; }
+  for (const it of items) {
+    const li = el('li', {}, el('b', {}, it.name), el('small', {}, `${new Date(it.startedAt).toLocaleString('nl-NL', { dateStyle: 'short', timeStyle: 'short' })} · ${{ done: 'klaar', running: 'bezig', error: 'mislukt' }[it.state] || it.state}`));
+    li.addEventListener('click', () => openJob(it));
+    ul.append(li);
+  }
+}
+async function openJob(it) {
+  clearInterval(pollTimer);
+  currentJob = it.id;
+  const r = await api('status?id=' + encodeURIComponent(it.id));
+  if (!r.ok) return;
+  const s = r.data;
+  $('name').value = s.name || ''; $('url').value = s.url || '';
+  lastInput = { name: s.name, url: s.url };
+  ['empty', 'result', 'editor'].forEach(x => $(x).classList.add('hide'));
+  $('progress').classList.remove('hide');
+  $('log').textContent = (s.log || []).join('\n');
+  if (s.state === 'done') { setState('ok', 'Klaar'); showResult(s); }
+  else if (s.state === 'error') setState('err', 'Mislukt: ' + (s.error || ''));
+  else { setState('run', 'Bezig…'); pollTimer = setInterval(() => poll(it.id, Date.now()), 2000); }
+}
+
+boot();
+</script>
+</body>
+</html>
