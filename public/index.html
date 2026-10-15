@@ -25,7 +25,7 @@
   h2 { font-size: 15px; margin: 0 0 12px; }
   label { display: block; font-size: 13px; font-weight: 600; margin: 12px 0 4px; }
   label small { font-weight: 400; color: var(--muted); }
-  input[type=text], input[type=url], input[type=password], textarea {
+  input[type=text], input[type=url], input[type=password], textarea, select {
     width: 100%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); font: inherit;
   }
   input:focus, textarea:focus { outline: 2px solid var(--brand); outline-offset: 1px; }
@@ -112,6 +112,8 @@
       <label>Accentkleur <small>(gevonden op de site; klik om te wisselen)</small></label>
       <div id="swatches" class="row" style="flex-wrap:wrap"></div>
       <p class="hint" id="metaInfo"></p>
+      <label for="placement">Plaatsing carrousel <small>(standaard kiest de AI de plek)</small></label>
+      <select id="placement"><option value="">Automatisch (AI)</option></select>
       <div class="grid2">
         <div><label>Popup: kop</label><input type="text" data-k="popup.headline"></div>
         <div><label>Popup: knop</label><input type="text" data-k="popup.cta"></div>
@@ -180,6 +182,10 @@ $('regen').addEventListener('click', () => {
   });
   const input = { ...(lastInput || readForm()), autoCopy: false, overrides };
   if ($('customAccent').checked) input.accentColor = $('accent').value;
+  if ($('placement').value) {
+    const [index, position] = $('placement').value.split(':');
+    input.carouselAt = { index: Number(index), position };
+  }
   start(input);
 });
 
@@ -281,6 +287,12 @@ function showResult(s) {
     });
     sw.append(b);
   }
+
+  // keuzemenu "Plaatsing": vóór elke sectie van de pagina, plus na de laatste
+  const sel = $('placement'); sel.replaceChildren(el('option', { value: '' }, 'Automatisch (AI)'));
+  const outline = m.outline || [];
+  for (const sct of outline) sel.append(el('option', { value: `${sct.i}:before` }, `Vóór: ${sct.label}`));
+  if (outline.length) { const last = outline[outline.length - 1]; sel.append(el('option', { value: `${last.i}:after` }, `Na: ${last.label}`)); }
 
   if (s.copy) {
     $('editor').classList.remove('hide');
