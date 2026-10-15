@@ -1,19 +1,25 @@
 {
   "name": "pdp-demo",
   "version": "1.0.0",
-  "description": "",
+  "description": "PDP demo generator (CLI + web app) — PI Marketing",
   "main": "index.js",
   "directories": {
     "lib": "lib"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node app.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@netlify/blobs": "^11.1.4",
+    "@sparticuz/chromium-min": "^153.0.0",
     "playwright-core": "^1.61.1"
+  },
+  "engines": {
+    "node": ">=22.12.0"
   }
 }
