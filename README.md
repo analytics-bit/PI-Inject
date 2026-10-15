@@ -93,7 +93,7 @@ Goed om te weten:
 
 ```bash
 npm install
-cp .env.example .env   # vul APP_PASSWORD en OPENROUTER_API_KEY in
+cp .env.example .env   # vul OPENROUTER_API_KEY in (APP_PASSWORD leeg laten = geen login, alleen bereikbaar op deze computer)
 npm start              # http://localhost:8462
 ```
 

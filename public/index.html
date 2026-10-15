@@ -109,6 +109,9 @@
     <div class="card hide" id="editor">
       <h2>Teksten aanpassen</h2>
       <p class="hint" style="margin-top:-6px">Pas aan wat je wilt en genereer opnieuw: de pagina wordt opnieuw opgehaald met jouw teksten.</p>
+      <label>Accentkleur <small>(gevonden op de site; klik om te wisselen)</small></label>
+      <div id="swatches" class="row" style="flex-wrap:wrap"></div>
+      <p class="hint" id="metaInfo"></p>
       <div class="grid2">
         <div><label>Popup: kop</label><input type="text" data-k="popup.headline"></div>
         <div><label>Popup: knop</label><input type="text" data-k="popup.cta"></div>
@@ -175,7 +178,9 @@ $('regen').addEventListener('click', () => {
     const [b, f] = i.dataset.k.split('.');
     (overrides[b] = overrides[b] || {})[f] = i.value;
   });
-  start({ ...(lastInput || readForm()), autoCopy: false, overrides });
+  const input = { ...(lastInput || readForm()), autoCopy: false, overrides };
+  if ($('customAccent').checked) input.accentColor = $('accent').value;
+  start(input);
 });
 
 /* ---------- job starten en volgen ---------- */
@@ -260,6 +265,21 @@ function showResult(s) {
     const dl = el('a', { href: fileUrl(s.id, f.name, true) }, 'Download');
     const thumb = isImg ? el('img', { src: fileUrl(s.id, f.name), alt: LABELS[f.name], loading: 'lazy' }) : el('div', { style: 'height:60px;display:flex;align-items:center;font-size:30px;justify-content:center;background:var(--bg)' }, f.name.endsWith('.pdf') ? '📄' : '🧾');
     files.append(el('div', { class: 'shot' }, thumb, el('div', {}, el('span', {}, LABELS[f.name]), el('span', {}, view, ' · ', dl))));
+  }
+
+  // gevonden merkkleur(en) + waar de carrousel is geplaatst
+  const m = s.meta || {};
+  $('metaInfo').textContent = [m.accent ? `Gebruikt: ${m.accent} (${m.accentSource})` : '', m.placement ? `Carrousel: ${m.placement}` : ''].filter(Boolean).join(' · ');
+  const sw = $('swatches'); sw.replaceChildren();
+  const colors = [...new Set([m.accent, ...((m.palette || []).map(p => p.color))].filter(c => /^#[0-9a-f]{6}$/i.test(c || '')))];
+  for (const c of colors) {
+    const b = el('button', { type: 'button', title: c, style: `width:32px;height:32px;padding:0;border-radius:50%;background:${c};border:2px solid ${c === m.accent ? 'var(--ink)' : 'var(--line)'}` });
+    b.addEventListener('click', () => {
+      $('customAccent').checked = true; $('accent').value = c; $('accent').classList.remove('hide');
+      sw.querySelectorAll('button').forEach(x => x.style.borderColor = 'var(--line)');
+      b.style.borderColor = 'var(--ink)';
+    });
+    sw.append(b);
   }
 
   if (s.copy) {
