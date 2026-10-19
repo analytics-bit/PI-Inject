@@ -25,7 +25,7 @@
   h2 { font-size: 15px; margin: 0 0 12px; }
   label { display: block; font-size: 13px; font-weight: 600; margin: 12px 0 4px; }
   label small { font-weight: 400; color: var(--muted); }
-  input[type=text], input[type=url], input[type=password], textarea {
+  input[type=text], input[type=url], input[type=password], textarea, select {
     width: 100%; padding: 9px 11px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); font: inherit;
   }
   input:focus, textarea:focus { outline: 2px solid var(--brand); outline-offset: 1px; }
@@ -85,6 +85,17 @@
       <label class="check"><input type="checkbox" id="autoCopy" checked> <span>Teksten automatisch op een persona schrijven <small>(AI bepaalt producttype en doelgroep)</small></span></label>
       <label class="check"><input type="checkbox" id="customAccent"> <span>Accentkleur zelf kiezen <small>(anders van de koopknop)</small></span></label>
       <input id="accent" type="color" value="#16a34a" class="hide" style="margin-top:6px;height:36px;width:80px;padding:2px">
+      <label for="device">Weergave</label>
+      <select id="device"><option value="">Desktop</option><option value="mobile">Mobiel (390 px)</option></select>
+      <label>Onderdelen</label>
+      <div id="parts" style="display:grid;grid-template-columns:1fr 1fr;gap:2px 10px">
+        <label class="check" style="margin-top:4px"><input type="checkbox" data-part="popup" checked> <span>Popup</span></label>
+        <label class="check" style="margin-top:4px"><input type="checkbox" data-part="stickyBar" checked> <span>Sticky bar</span></label>
+        <label class="check" style="margin-top:4px"><input type="checkbox" data-part="socialProof" checked> <span>Social proof</span></label>
+        <label class="check" style="margin-top:4px"><input type="checkbox" data-part="carousel" checked> <span>Carrousel</span></label>
+        <label class="check" style="margin-top:4px"><input type="checkbox" data-part="loyalty" checked> <span>Spaarpunten</span></label>
+        <label class="check" style="margin-top:4px"><input type="checkbox" data-part="storyRow" checked> <span>Story-rij</span></label>
+      </div>
       <button class="full" id="go">Genereer demo</button>
       <div class="err" id="formErr"></div>
       <p class="hint">Een run duurt ongeveer 1 à 2 minuten.</p>
@@ -109,6 +120,11 @@
     <div class="card hide" id="editor">
       <h2>Teksten aanpassen</h2>
       <p class="hint" style="margin-top:-6px">Pas aan wat je wilt en genereer opnieuw: de pagina wordt opnieuw opgehaald met jouw teksten.</p>
+      <label>Accentkleur <small>(gevonden op de site; klik om te wisselen)</small></label>
+      <div id="swatches" class="row" style="flex-wrap:wrap"></div>
+      <p class="hint" id="metaInfo"></p>
+      <label for="placement">Plaatsing carrousel <small>(standaard kiest de AI de plek)</small></label>
+      <select id="placement"><option value="">Automatisch (AI)</option></select>
       <div class="grid2">
         <div><label>Popup: kop</label><input type="text" data-k="popup.headline"></div>
         <div><label>Popup: knop</label><input type="text" data-k="popup.cta"></div>
@@ -120,8 +136,22 @@
         <div><label>Sticky bar: tekst</label><input type="text" data-k="stickyBar.text"></div>
         <div><label>Sticky bar: knop</label><input type="text" data-k="stickyBar.cta"></div>
       </div>
-      <label>Social proof</label><input type="text" data-k="socialProof.text">
-      <p class="hint">Let op: kortingspercentage, code en het aantal bezoekers zijn voorbeeldwaarden voor de demo.</p>
+      <div class="grid2">
+        <div><label>Social proof: tekst</label><input type="text" data-k="socialProof.text"></div>
+        <div><label>Social proof: plek</label>
+          <select data-k="socialProof.position">
+            <option value="below-cta">Onder de koopknop</option>
+            <option value="above-cta">Boven de koopknop</option>
+            <option value="below-title">Onder de titel</option>
+          </select></div>
+      </div>
+      <label style="margin-top:18px">Spaarpunten <small>(voor leden met een spaarprogramma)</small></label>
+      <div class="grid2">
+        <div><label>Naam programma <small>(leeg = "&lt;merk&gt; Members")</small></label><input type="text" data-k="loyalty.programName"></div>
+        <div><label>Punten per euro</label><input type="text" data-k="loyalty.pointsPerEuro"></div>
+        <div><label>Huidige punten van de klant</label><input type="text" data-k="loyalty.currentPoints"></div>
+      </div>
+      <p class="hint">Let op: kortingspercentage, code, het aantal bezoekers en de spaarpunten van de klant zijn voorbeeldwaarden voor de demo.</p>
       <button class="full" id="regen">Opnieuw genereren met mijn teksten</button>
     </div>
   </section>
@@ -165,7 +195,13 @@ $('customAccent').addEventListener('change', e => $('accent').classList.toggle('
 function readForm() {
   const input = { name: $('name').value.trim(), url: $('url').value.trim(), catalogUrl: $('catalogUrl').value.trim(), autoCopy: $('autoCopy').checked };
   if ($('customAccent').checked) input.accentColor = $('accent').value;
+  input.disable = disabledParts();
+  if ($('device').value) input.device = $('device').value;
   return input;
+}
+// onderdelen die uit staan (checkboxes onder "Onderdelen")
+function disabledParts() {
+  return [...document.querySelectorAll('#parts input[data-part]')].filter(c => !c.checked).map(c => c.dataset.part);
 }
 $('form').addEventListener('submit', e => { e.preventDefault(); start(readForm()); });
 
@@ -175,7 +211,14 @@ $('regen').addEventListener('click', () => {
     const [b, f] = i.dataset.k.split('.');
     (overrides[b] = overrides[b] || {})[f] = i.value;
   });
-  start({ ...(lastInput || readForm()), autoCopy: false, overrides });
+  const input = { ...(lastInput || readForm()), autoCopy: false, overrides };
+  if ($('customAccent').checked) input.accentColor = $('accent').value;
+  input.disable = disabledParts();
+  if ($('placement').value) {
+    const [index, position] = $('placement').value.split(':');
+    input.carouselAt = { index: Number(index), position };
+  }
+  start(input);
 });
 
 /* ---------- job starten en volgen ---------- */
@@ -231,7 +274,7 @@ function setState(kind, text) {
 
 /* ---------- resultaat tonen ---------- */
 const LABELS = {
-  '01-popup.png': 'Hero: PDP met popup', '02-fullpage.png': 'Volledige pagina', '03-detail-carousel.png': 'Carrousel',
+  '01-popup.png': 'Hero: PDP met popup', '01b-above-the-fold.png': 'Boven de vouw (zonder popup)', '02-fullpage.png': 'Volledige pagina', '03-detail-carousel.png': 'Carrousel',
   '03-detail-popup.png': 'Popup', '03-detail-socialproof.png': 'Social proof', '03-detail-stickybar.png': 'Sticky bar',
   'onepager.pdf': 'One-pager (PDF)', 'onepager.png': 'One-pager (PNG)', 'onepager.html': 'One-pager (HTML)',
 };
@@ -261,6 +304,27 @@ function showResult(s) {
     const thumb = isImg ? el('img', { src: fileUrl(s.id, f.name), alt: LABELS[f.name], loading: 'lazy' }) : el('div', { style: 'height:60px;display:flex;align-items:center;font-size:30px;justify-content:center;background:var(--bg)' }, f.name.endsWith('.pdf') ? '📄' : '🧾');
     files.append(el('div', { class: 'shot' }, thumb, el('div', {}, el('span', {}, LABELS[f.name]), el('span', {}, view, ' · ', dl))));
   }
+
+  // gevonden merkkleur(en) + waar de carrousel is geplaatst
+  const m = s.meta || {};
+  $('metaInfo').textContent = [m.accent ? `Gebruikt: ${m.accent} (${m.accentSource})` : '', m.placement ? `Carrousel: ${m.placement}` : ''].filter(Boolean).join(' · ');
+  const sw = $('swatches'); sw.replaceChildren();
+  const colors = [...new Set([m.accent, ...((m.palette || []).map(p => p.color))].filter(c => /^#[0-9a-f]{6}$/i.test(c || '')))];
+  for (const c of colors) {
+    const b = el('button', { type: 'button', title: c, style: `width:32px;height:32px;padding:0;border-radius:50%;background:${c};border:2px solid ${c === m.accent ? 'var(--ink)' : 'var(--line)'}` });
+    b.addEventListener('click', () => {
+      $('customAccent').checked = true; $('accent').value = c; $('accent').classList.remove('hide');
+      sw.querySelectorAll('button').forEach(x => x.style.borderColor = 'var(--line)');
+      b.style.borderColor = 'var(--ink)';
+    });
+    sw.append(b);
+  }
+
+  // keuzemenu "Plaatsing": vóór elke sectie van de pagina, plus na de laatste
+  const sel = $('placement'); sel.replaceChildren(el('option', { value: '' }, 'Automatisch (AI)'));
+  const outline = m.outline || [];
+  for (const sct of outline) sel.append(el('option', { value: `${sct.i}:before` }, `Vóór: ${sct.label}`));
+  if (outline.length) { const last = outline[outline.length - 1]; sel.append(el('option', { value: `${last.i}:after` }, `Na: ${last.label}`)); }
 
   if (s.copy) {
     $('editor').classList.remove('hide');
