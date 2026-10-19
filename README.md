@@ -100,3 +100,7 @@ npm start              # http://localhost:8462
 `app.js` is dezelfde API als de Netlify-functions, maar als gewone Node-server met opslag in `.data/` — handig om te testen of als terugvaloptie als Netlify sites blokkeert (er is dan een container met Chrome nodig; op Render kan dat met Docker).
 
 De command-line werkt nog steeds: `node generate.js configs/<prospect>.json`.
+
+### Onderdelen (personalisaties)
+
+Popup, sticky bar, social proof, carrousel en **spaarpunten** (voortgangsbalk voor leden: "X sparen N punten met dit artikel"). Elk onderdeel kan in de webapp uit/aan; in een config zet je `"loyalty": false` enz. Spaarpunten: `loyalty: { programName, pointsPerEuro, currentPoints, milestones }` — het aantal te verdienen punten volgt uit de productprijs; punten van de klant en stappen zijn demo-waarden. Social proof en spaarpunten staan standaard onder de koopknop (`socialProof.position`: `below-cta` | `above-cta` | `below-title`).
