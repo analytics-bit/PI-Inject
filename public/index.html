@@ -85,6 +85,8 @@
       <label class="check"><input type="checkbox" id="autoCopy" checked> <span>Teksten automatisch op een persona schrijven <small>(AI bepaalt producttype en doelgroep)</small></span></label>
       <label class="check"><input type="checkbox" id="customAccent"> <span>Accentkleur zelf kiezen <small>(anders van de koopknop)</small></span></label>
       <input id="accent" type="color" value="#16a34a" class="hide" style="margin-top:6px;height:36px;width:80px;padding:2px">
+      <label for="device">Weergave</label>
+      <select id="device"><option value="">Desktop</option><option value="mobile">Mobiel (390 px)</option></select>
       <label>Onderdelen</label>
       <div id="parts" style="display:grid;grid-template-columns:1fr 1fr;gap:2px 10px">
         <label class="check" style="margin-top:4px"><input type="checkbox" data-part="popup" checked> <span>Popup</span></label>
@@ -92,6 +94,7 @@
         <label class="check" style="margin-top:4px"><input type="checkbox" data-part="socialProof" checked> <span>Social proof</span></label>
         <label class="check" style="margin-top:4px"><input type="checkbox" data-part="carousel" checked> <span>Carrousel</span></label>
         <label class="check" style="margin-top:4px"><input type="checkbox" data-part="loyalty" checked> <span>Spaarpunten</span></label>
+        <label class="check" style="margin-top:4px"><input type="checkbox" data-part="storyRow" checked> <span>Story-rij</span></label>
       </div>
       <button class="full" id="go">Genereer demo</button>
       <div class="err" id="formErr"></div>
@@ -193,6 +196,7 @@ function readForm() {
   const input = { name: $('name').value.trim(), url: $('url').value.trim(), catalogUrl: $('catalogUrl').value.trim(), autoCopy: $('autoCopy').checked };
   if ($('customAccent').checked) input.accentColor = $('accent').value;
   input.disable = disabledParts();
+  if ($('device').value) input.device = $('device').value;
   return input;
 }
 // onderdelen die uit staan (checkboxes onder "Onderdelen")
@@ -270,7 +274,7 @@ function setState(kind, text) {
 
 /* ---------- resultaat tonen ---------- */
 const LABELS = {
-  '01-popup.png': 'Hero: PDP met popup', '02-fullpage.png': 'Volledige pagina', '03-detail-carousel.png': 'Carrousel',
+  '01-popup.png': 'Hero: PDP met popup', '01b-above-the-fold.png': 'Boven de vouw (zonder popup)', '02-fullpage.png': 'Volledige pagina', '03-detail-carousel.png': 'Carrousel',
   '03-detail-popup.png': 'Popup', '03-detail-socialproof.png': 'Social proof', '03-detail-stickybar.png': 'Sticky bar',
   'onepager.pdf': 'One-pager (PDF)', 'onepager.png': 'One-pager (PNG)', 'onepager.html': 'One-pager (HTML)',
 };

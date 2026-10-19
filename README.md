@@ -104,3 +104,5 @@ De command-line werkt nog steeds: `node generate.js configs/<prospect>.json`.
 ### Onderdelen (personalisaties)
 
 Popup, sticky bar, social proof, carrousel en **spaarpunten** (voortgangsbalk voor leden: "X sparen N punten met dit artikel"). Elk onderdeel kan in de webapp uit/aan; in een config zet je `"loyalty": false` enz. Spaarpunten: `loyalty: { programName, pointsPerEuro, currentPoints, milestones }` — het aantal te verdienen punten volgt uit de productprijs; punten van de klant en stappen zijn demo-waarden. Social proof en spaarpunten staan standaard onder de koopknop (`socialProof.position`: `below-cta` | `above-cta` | `below-title`).
+
+**Story-rij** (ronde productplaatjes met ring, boven de vouw, onder header/breadcrumbs) en **weergave mobiel**: kies in de webapp "Mobiel (390 px)" (of `"device": "mobile"` in een config) om de pagina in iPhone-formaat te renderen. Naast het hero-beeld met popup komt dan ook `01b-above-the-fold.png` (zonder popup).
