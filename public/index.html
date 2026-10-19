@@ -125,7 +125,15 @@
         <div><label>Sticky bar: tekst</label><input type="text" data-k="stickyBar.text"></div>
         <div><label>Sticky bar: knop</label><input type="text" data-k="stickyBar.cta"></div>
       </div>
-      <label>Social proof</label><input type="text" data-k="socialProof.text">
+      <div class="grid2">
+        <div><label>Social proof: tekst</label><input type="text" data-k="socialProof.text"></div>
+        <div><label>Social proof: plek</label>
+          <select data-k="socialProof.position">
+            <option value="below-cta">Onder de koopknop</option>
+            <option value="above-cta">Boven de koopknop</option>
+            <option value="below-title">Onder de titel</option>
+          </select></div>
+      </div>
       <p class="hint">Let op: kortingspercentage, code en het aantal bezoekers zijn voorbeeldwaarden voor de demo.</p>
       <button class="full" id="regen">Opnieuw genereren met mijn teksten</button>
     </div>
