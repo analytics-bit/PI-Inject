@@ -42,6 +42,10 @@
   .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--brand); }
   .dot.run { animation: pulse 1s infinite alternate; } .dot.err { background: var(--danger); }
   @keyframes pulse { from { opacity: .3 } to { opacity: 1 } }
+  #chat { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+  .msg { padding: 8px 12px; border-radius: 10px; font-size: 13.5px; max-width: 92%; white-space: pre-wrap; }
+  .msg.me { align-self: flex-end; background: var(--brand); color: var(--brand-ink); }
+  .msg.ai { align-self: flex-start; background: var(--bg); border: 1px solid var(--line); }
   .persona { background: var(--warn-bg); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; font-size: 14px; }
   .persona h3 { margin: 0 0 4px; font-size: 14px; } .persona ul { margin: 4px 0 0; padding-left: 18px; color: var(--muted); }
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
@@ -93,6 +97,8 @@
       </select>
       <label for="profileHints">Eigen profielen <small>(optioneel, één per regel)</small></label>
       <textarea id="profileHints" rows="2" placeholder="Nieuwe anonieme bezoeker&#10;Bekende koopjesjager"></textarea>
+      <label for="instructions">Extra instructies voor de AI <small>(optioneel)</small></label>
+      <textarea id="instructions" rows="3" placeholder="Bijv. informele toon, mik op studenten, geen kortingen, benadruk duurzaamheid, noem het retourbeleid"></textarea>
       <label for="device">Weergave</label>
       <select id="device"><option value="">Desktop</option><option value="mobile">Mobiel (390 px)</option></select>
       <label>Onderdelen</label>
@@ -125,6 +131,14 @@
       <div id="profileTabs" class="row hide" style="flex-wrap:wrap;margin-top:14px"></div>
       <div class="persona hide" id="profileBox" style="margin-top:12px"></div>
       <div id="files" class="shots" style="margin-top:14px"></div>
+    </div>
+
+    <div class="card hide" id="refineCard">
+      <h2>Doorprompten</h2>
+      <p class="hint" style="margin-top:-6px">Vertel in je eigen woorden wat er anders moet. De AI past de profielen aan en de pagina wordt opnieuw gegenereerd. Herhaal dit tot het naar wens is.</p>
+      <div id="chat" class="hide"></div>
+      <textarea id="refineInput" rows="3" placeholder="Bijv. 'Maak de popup van de loyale klant informeler', 'Voeg een profiel toe voor studenten' of 'Laat social proof weg bij profiel 2'. Ctrl+Enter om te versturen."></textarea>
+      <button class="full" id="refineGo">Pas aan met deze prompt</button>
     </div>
 
     <div class="card hide" id="editor">
@@ -218,6 +232,8 @@ function readForm() {
   input.profileCount = Number($('profileCount').value) || 3;
   const hints = $('profileHints').value.split('\n').map(x => x.trim()).filter(Boolean).slice(0, 3);
   if (hints.length) input.profileHints = hints;
+  const instructions = $('instructions').value.trim();
+  if (instructions) input.instructions = instructions;
   return input;
 }
 // onderdelen die uit staan (checkboxes onder "Onderdelen")
@@ -226,12 +242,12 @@ function disabledParts() {
 }
 $('form').addEventListener('submit', e => { e.preventDefault(); start(readForm()); });
 
-$('regen').addEventListener('click', () => {
-  if (!state) return;
+// Bouwt de invoer voor een nieuwe run op basis van het getoonde resultaat en jouw bewerkingen:
+// alle profielen gaan terug naar de server (de geselecteerde met jouw aanpassingen, de rest ongewijzigd).
+function buildEditedInput() {
   saveEditor();
   const input = { ...(lastInput || readForm()), autoCopy: false };
   delete input.overrides;
-  // alle profielen gaan terug naar de server: het geselecteerde profiel met jouw aanpassingen, de rest ongewijzigd
   input.profiles = state.profiles.map(p => ({
     key: p.key, name: p.name, description: p.description, signals: p.signals, changes: p.changes, show: p.show,
     copy: Object.fromEntries(Object.entries(p.copy || {}).filter(([, v]) => v && typeof v === 'object')),
@@ -243,8 +259,39 @@ $('regen').addEventListener('click', () => {
     const [index, position] = $('placement').value.split(':');
     input.carouselAt = { index: Number(index), position };
   }
+  input.chat = chat;
+  return input;
+}
+
+$('regen').addEventListener('click', () => {
+  if (!state) return;
+  const input = buildEditedInput();
+  delete input.refine;
   start(input);
 });
+
+// Doorprompten: de AI past de huidige profielen aan op wat je intypt; de pagina wordt opnieuw gegenereerd
+function submitRefine() {
+  const text = $('refineInput').value.trim();
+  if (!state || !text) return;
+  const input = buildEditedInput();
+  input.refine = text;
+  $('refineInput').value = '';
+  start(input);
+}
+$('refineGo').addEventListener('click', submitRefine);
+$('refineInput').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) submitRefine(); });
+
+// het gesprek tot nu toe: jouw prompts en wat de AI per stap heeft aangepast
+let chat = [];
+function renderChat() {
+  const box = $('chat'); box.replaceChildren();
+  for (const c of chat) {
+    box.append(el('div', { class: 'msg me' }, c.prompt));
+    if (c.summary) box.append(el('div', { class: 'msg ai' }, c.summary));
+  }
+  box.classList.toggle('hide', !chat.length);
+}
 
 /* ---------- job starten en volgen ---------- */
 async function start(input) {
@@ -252,7 +299,7 @@ async function start(input) {
   const id = crypto.randomUUID();
   lastInput = input;
   setBusy(true);
-  ['empty', 'result', 'editor'].forEach(x => $(x).classList.add('hide'));
+  ['empty', 'result', 'editor', 'refineCard'].forEach(x => $(x).classList.add('hide'));
   $('progress').classList.remove('hide');
   $('log').textContent = 'Starten…';
   setState('run', 'Bezig…');
@@ -349,6 +396,12 @@ function showResult(s) {
   for (const sct of outline) sel.append(el('option', { value: `${sct.i}:before` }, `Vóór: ${sct.label}`));
   if (outline.length) { const last = outline[outline.length - 1]; sel.append(el('option', { value: `${last.i}:after` }, `Na: ${last.label}`)); }
 
+  // doorprompten: het gesprek tot nu toe, en de beginopdracht onthouden voor de volgende stap
+  chat = Array.isArray(m.chat) ? m.chat : [];
+  if (m.instructions) { $('instructions').value = m.instructions; if (lastInput) lastInput.instructions = m.instructions; }
+  $('refineCard').classList.remove('hide');
+  renderChat();
+
   renderProfiles();
 }
 
@@ -439,8 +492,15 @@ async function openJob(it) {
   if (!r.ok) return;
   const s = r.data;
   $('name').value = s.name || ''; $('url').value = s.url || '';
+  const inp = s.input || {};
   lastInput = { name: s.name, url: s.url };
-  ['empty', 'result', 'editor'].forEach(x => $(x).classList.add('hide'));
+  if (inp.catalogUrl) lastInput.catalogUrl = inp.catalogUrl;
+  if (inp.device) lastInput.device = inp.device;
+  if (inp.accentColor) lastInput.accentColor = inp.accentColor;
+  if (inp.disable && inp.disable.length) lastInput.disable = inp.disable;
+  $('catalogUrl').value = inp.catalogUrl || ''; $('device').value = inp.device || '';
+  document.querySelectorAll('#parts input[data-part]').forEach(c => { c.checked = !(inp.disable || []).includes(c.dataset.part); });
+  ['empty', 'result', 'editor', 'refineCard'].forEach(x => $(x).classList.add('hide'));
   $('progress').classList.remove('hide');
   $('log').textContent = (s.log || []).join('\n');
   if (s.state === 'done') { setState('ok', 'Klaar'); showResult(s); }
