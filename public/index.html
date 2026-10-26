@@ -85,6 +85,14 @@
       <label class="check"><input type="checkbox" id="autoCopy" checked> <span>Teksten automatisch op een persona schrijven <small>(AI bepaalt producttype en doelgroep)</small></span></label>
       <label class="check"><input type="checkbox" id="customAccent"> <span>Accentkleur zelf kiezen <small>(anders van de koopknop)</small></span></label>
       <input id="accent" type="color" value="#16a34a" class="hide" style="margin-top:6px;height:36px;width:80px;padding:2px">
+      <label for="profileCount">Persoonlijke versies</label>
+      <select id="profileCount">
+        <option value="3">3 bezoekersprofielen (AI kiest)</option>
+        <option value="2">2 bezoekersprofielen</option>
+        <option value="1">1 (alleen basisversie)</option>
+      </select>
+      <label for="profileHints">Eigen profielen <small>(optioneel, één per regel)</small></label>
+      <textarea id="profileHints" rows="2" placeholder="Nieuwe anonieme bezoeker&#10;Bekende koopjesjager"></textarea>
       <label for="device">Weergave</label>
       <select id="device"><option value="">Desktop</option><option value="mobile">Mobiel (390 px)</option></select>
       <label>Onderdelen</label>
@@ -114,12 +122,23 @@
     <div class="card hide" id="result">
       <h2 id="resultTitle">Resultaat</h2>
       <div class="persona hide" id="persona"></div>
+      <div id="profileTabs" class="row hide" style="flex-wrap:wrap;margin-top:14px"></div>
+      <div class="persona hide" id="profileBox" style="margin-top:12px"></div>
       <div id="files" class="shots" style="margin-top:14px"></div>
     </div>
 
     <div class="card hide" id="editor">
-      <h2>Teksten aanpassen</h2>
-      <p class="hint" style="margin-top:-6px">Pas aan wat je wilt en genereer opnieuw: de pagina wordt opnieuw opgehaald met jouw teksten.</p>
+      <h2>Aanpassen <span id="editingName" style="color:var(--muted);font-weight:400"></span></h2>
+      <p class="hint" style="margin-top:-6px">Pas aan wat je wilt en genereer opnieuw: de pagina wordt opnieuw opgehaald met jouw teksten. Je aanpassingen gelden voor het profiel dat je hierboven hebt geselecteerd; de andere profielen blijven zoals ze zijn.</p>
+      <label>Onderdelen in dit profiel</label>
+      <div id="showParts" style="display:grid;grid-template-columns:1fr 1fr;gap:2px 10px">
+        <label class="check" style="margin-top:4px"><input type="checkbox" data-show="popup"> <span>Popup</span></label>
+        <label class="check" style="margin-top:4px"><input type="checkbox" data-show="stickyBar"> <span>Sticky bar</span></label>
+        <label class="check" style="margin-top:4px"><input type="checkbox" data-show="socialProof"> <span>Social proof</span></label>
+        <label class="check" style="margin-top:4px"><input type="checkbox" data-show="carousel"> <span>Carrousel</span></label>
+        <label class="check" style="margin-top:4px"><input type="checkbox" data-show="loyalty"> <span>Spaarpunten</span></label>
+        <label class="check" style="margin-top:4px"><input type="checkbox" data-show="storyRow"> <span>Story-rij</span></label>
+      </div>
       <label>Accentkleur <small>(gevonden op de site; klik om te wisselen)</small></label>
       <div id="swatches" class="row" style="flex-wrap:wrap"></div>
       <p class="hint" id="metaInfo"></p>
@@ -148,7 +167,6 @@
       <label style="margin-top:18px">Spaarpunten <small>(voor leden met een spaarprogramma)</small></label>
       <div class="grid2">
         <div><label>Naam programma <small>(leeg = "&lt;merk&gt; Members")</small></label><input type="text" data-k="loyalty.programName"></div>
-        <div><label>Punten per euro</label><input type="text" data-k="loyalty.pointsPerEuro"></div>
         <div><label>Huidige punten van de klant</label><input type="text" data-k="loyalty.currentPoints"></div>
       </div>
       <p class="hint">Let op: kortingspercentage, code, het aantal bezoekers en de spaarpunten van de klant zijn voorbeeldwaarden voor de demo.</p>
@@ -197,6 +215,9 @@ function readForm() {
   if ($('customAccent').checked) input.accentColor = $('accent').value;
   input.disable = disabledParts();
   if ($('device').value) input.device = $('device').value;
+  input.profileCount = Number($('profileCount').value) || 3;
+  const hints = $('profileHints').value.split('\n').map(x => x.trim()).filter(Boolean).slice(0, 3);
+  if (hints.length) input.profileHints = hints;
   return input;
 }
 // onderdelen die uit staan (checkboxes onder "Onderdelen")
@@ -206,12 +227,16 @@ function disabledParts() {
 $('form').addEventListener('submit', e => { e.preventDefault(); start(readForm()); });
 
 $('regen').addEventListener('click', () => {
-  const overrides = {};
-  document.querySelectorAll('#editor [data-k]').forEach(i => {
-    const [b, f] = i.dataset.k.split('.');
-    (overrides[b] = overrides[b] || {})[f] = i.value;
-  });
-  const input = { ...(lastInput || readForm()), autoCopy: false, overrides };
+  if (!state) return;
+  saveEditor();
+  const input = { ...(lastInput || readForm()), autoCopy: false };
+  delete input.overrides;
+  // alle profielen gaan terug naar de server: het geselecteerde profiel met jouw aanpassingen, de rest ongewijzigd
+  input.profiles = state.profiles.map(p => ({
+    key: p.key, name: p.name, description: p.description, signals: p.signals, changes: p.changes, show: p.show,
+    copy: Object.fromEntries(Object.entries(p.copy || {}).filter(([, v]) => v && typeof v === 'object')),
+  }));
+  if (state.s.persona) input.persona = state.s.persona;
   if ($('customAccent').checked) input.accentColor = $('accent').value;
   input.disable = disabledParts();
   if ($('placement').value) {
@@ -276,9 +301,13 @@ function setState(kind, text) {
 const LABELS = {
   '01-popup.png': 'Hero: PDP met popup', '01b-above-the-fold.png': 'Boven de vouw (zonder popup)', '02-fullpage.png': 'Volledige pagina', '03-detail-carousel.png': 'Carrousel',
   '03-detail-popup.png': 'Popup', '03-detail-socialproof.png': 'Social proof', '03-detail-stickybar.png': 'Sticky bar',
+  '03-detail-loyalty.png': 'Spaarpunten', '03-detail-story.png': 'Story-rij',
   'onepager.pdf': 'One-pager (PDF)', 'onepager.png': 'One-pager (PNG)', 'onepager.html': 'One-pager (HTML)',
 };
 const fileUrl = (id, name, dl) => `/api/file?id=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}${dl ? '&download=1' : ''}`;
+
+// state: het getoonde resultaat en de (bewerkbare) bezoekersprofielen { s, profiles, active }
+let state = null;
 
 function showResult(s) {
   $('result').classList.remove('hide');
@@ -294,16 +323,10 @@ function showResult(s) {
     }
   } else p.classList.add('hide');
 
-  const files = $('files'); files.replaceChildren();
-  const order = Object.keys(LABELS);
-  const sorted = (s.files || []).filter(f => LABELS[f.name]).sort((a, b) => order.indexOf(a.name) - order.indexOf(b.name));
-  for (const f of sorted) {
-    const isImg = f.name.endsWith('.png');
-    const view = el('a', { href: fileUrl(s.id, f.name), target: '_blank', rel: 'noopener' }, 'Openen');
-    const dl = el('a', { href: fileUrl(s.id, f.name, true) }, 'Download');
-    const thumb = isImg ? el('img', { src: fileUrl(s.id, f.name), alt: LABELS[f.name], loading: 'lazy' }) : el('div', { style: 'height:60px;display:flex;align-items:center;font-size:30px;justify-content:center;background:var(--bg)' }, f.name.endsWith('.pdf') ? '📄' : '🧾');
-    files.append(el('div', { class: 'shot' }, thumb, el('div', {}, el('span', {}, LABELS[f.name]), el('span', {}, view, ' · ', dl))));
-  }
+  // profielen: nieuwe runs hebben s.profiles, oudere runs hadden één set teksten in s.copy
+  let profiles = JSON.parse(JSON.stringify(s.profiles || []));
+  if (!profiles.length && s.copy) profiles = [{ key: 'standaard', name: 'Standaard', description: '', signals: '', changes: [], show: {}, copy: s.copy, prefix: '' }];
+  state = { s, profiles, active: 0 };
 
   // gevonden merkkleur(en) + waar de carrousel is geplaatst
   const m = s.meta || {};
@@ -326,13 +349,75 @@ function showResult(s) {
   for (const sct of outline) sel.append(el('option', { value: `${sct.i}:before` }, `Vóór: ${sct.label}`));
   if (outline.length) { const last = outline[outline.length - 1]; sel.append(el('option', { value: `${last.i}:after` }, `Na: ${last.label}`)); }
 
-  if (s.copy) {
-    $('editor').classList.remove('hide');
-    document.querySelectorAll('#editor [data-k]').forEach(i => {
-      const [b, f] = i.dataset.k.split('.');
-      i.value = (s.copy[b] && s.copy[b][f]) || '';
-    });
+  renderProfiles();
+}
+
+// tabs per profiel, uitleg wat er verandert, de bestanden van dat profiel en de editor
+function renderProfiles() {
+  const many = state.profiles.length > 1;
+  const tabs = $('profileTabs'); tabs.replaceChildren();
+  tabs.classList.toggle('hide', !many);
+  state.profiles.forEach((pr, i) => {
+    const b = el('button', { type: 'button', class: i === state.active ? '' : 'secondary' }, `${i + 1}. ${pr.name}`);
+    b.addEventListener('click', () => { saveEditor(); state.active = i; renderProfiles(); });
+    tabs.append(b);
+  });
+  const pr = state.profiles[state.active];
+
+  const box = $('profileBox'); box.replaceChildren();
+  if (many || (pr.changes && pr.changes.length)) {
+    box.classList.remove('hide');
+    box.append(el('h3', {}, `Profiel: ${pr.name}`));
+    if (pr.description) box.append(el('div', {}, pr.description));
+    if (pr.signals) box.append(el('div', { style: 'margin-top:4px;color:var(--muted)' }, `Herkenbaar aan: ${pr.signals}`));
+    if (pr.changes && pr.changes.length) box.append(el('div', { style: 'margin-top:6px;font-weight:600' }, 'Wat verandert er voor dit profiel'), el('ul', {}, ...pr.changes.map(c => el('li', {}, c))));
+  } else box.classList.add('hide');
+
+  renderFiles(state.s, pr.prefix || '');
+  loadEditor(pr);
+}
+
+function renderFiles(s, prefix) {
+  const files = $('files'); files.replaceChildren();
+  const order = Object.keys(LABELS);
+  // bestanden van dit profiel hebben het voorvoegsel (v1-, v2-, ...); bij één versie hebben ze geen voorvoegsel
+  const baseName = n => prefix ? (n.startsWith(prefix) ? n.slice(prefix.length) : null) : (/^v[0-9]+-/.test(n) ? null : n);
+  const list = (s.files || []).map(f => ({ ...f, base: baseName(f.name) })).filter(f => f.base && LABELS[f.base])
+    .sort((a, b) => order.indexOf(a.base) - order.indexOf(b.base));
+  for (const f of list) {
+    const isImg = f.name.endsWith('.png');
+    const view = el('a', { href: fileUrl(s.id, f.name), target: '_blank', rel: 'noopener' }, 'Openen');
+    const dl = el('a', { href: fileUrl(s.id, f.name, true) }, 'Download');
+    const thumb = isImg ? el('img', { src: fileUrl(s.id, f.name), alt: LABELS[f.base], loading: 'lazy' }) : el('div', { style: 'height:60px;display:flex;align-items:center;font-size:30px;justify-content:center;background:var(--bg)' }, f.name.endsWith('.pdf') ? '📄' : '🧾');
+    files.append(el('div', { class: 'shot' }, thumb, el('div', {}, el('span', {}, LABELS[f.base]), el('span', {}, view, ' · ', dl))));
   }
+}
+
+function loadEditor(pr) {
+  $('editingName').textContent = state.profiles.length > 1 ? `· ${pr.name}` : '';
+  $('editor').classList.remove('hide');
+  document.querySelectorAll('#editor [data-k]').forEach(i => {
+    const [b, f] = i.dataset.k.split('.');
+    const c = pr.copy && pr.copy[b];
+    i.value = c && typeof c === 'object' && c[f] != null ? c[f] : '';
+  });
+  document.querySelectorAll('#editor [data-show]').forEach(c => {
+    const k = c.dataset.show;
+    c.checked = !(pr.show && pr.show[k] === false) && !(pr.copy && pr.copy[k] === false);
+  });
+}
+
+function saveEditor() {
+  if (!state) return;
+  const pr = state.profiles[state.active];
+  if (!pr) return;
+  pr.copy = pr.copy || {}; pr.show = pr.show || {};
+  document.querySelectorAll('#editor [data-show]').forEach(c => { pr.show[c.dataset.show] = c.checked; });
+  document.querySelectorAll('#editor [data-k]').forEach(i => {
+    const [b, f] = i.dataset.k.split('.');
+    if (!pr.copy[b] || typeof pr.copy[b] !== 'object') pr.copy[b] = {};
+    pr.copy[b][f] = i.value;
+  });
 }
 
 /* ---------- geschiedenis ---------- */
