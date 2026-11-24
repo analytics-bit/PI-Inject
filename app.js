@@ -11,6 +11,8 @@ const { fsStore } = require('./lib/store-fs');
 const PUBLIC = path.join(__dirname, 'public');
 const store = fsStore(process.env.DATA_DIR || path.join(__dirname, '.data'));
 const PORT = process.env.PORT || 8462;
+// Lokaal: demo-bestanden live in output/<prospect>/ (zet LOCAL_OUTPUT_DIR= leeg in .env om dit uit te zetten)
+if (!('LOCAL_OUTPUT_DIR' in process.env)) process.env.LOCAL_OUTPUT_DIR = path.join(__dirname, 'output');
 // Zonder APP_PASSWORD: geen login, maar dan alleen bereikbaar vanaf deze computer.
 if (!process.env.APP_PASSWORD) process.env.AUTH_DISABLED = '1';
 const HOST = process.env.AUTH_DISABLED === '1' ? '127.0.0.1' : '0.0.0.0';

@@ -55,8 +55,10 @@ Output in `output/<prospect>/`:
 
 - **Cookiebanner nog zichtbaar** → knoptekst ontbreekt in het patroon in `generate.js` (`dismissCookieBanners`).
 - **Carrousel leeg/raar** → geef een betere `catalogUrl` of vul `recommendations` handmatig.
-- **Bot-detectie (Cloudflare e.d.)** → probeer een andere pagina van de site; werkt het niet, dan is dit
-  de zeldzame site waar handmatig een screenshot nodig is.
+- **Bot-detectie (Cloudflare e.d.)** → lokaal (`node app.js` of `node generate.js`) opent er automatisch een
+  Chrome-venster met de site: los de controle daar zelf op, daarna gaat de demo in dat venster verder (max. 5 minuten
+  wachten; de webapp toont "Wacht op jou"). Op Netlify kan dat niet: draai de demo dan lokaal, probeer een andere pagina
+  van de site of upload een handmatige screenshot (zie "Handmatige screenshots" hieronder). Uitzetten: `INTERACTIVE_BROWSER=0`.
 
 ## Huisstijl en persona-copy (automatisch)
 
@@ -107,11 +109,30 @@ Popup, sticky bar, social proof, carrousel en **spaarpunten** (voortgangsbalk vo
 
 **Story-rij** (ronde productplaatjes met ring, boven de vouw, onder header/breadcrumbs) en **weergave mobiel**: kies in de webapp "Mobiel (390 px)" (of `"device": "mobile"` in een config) om de pagina in iPhone-formaat te renderen. Naast het hero-beeld met popup komt dan ook `01b-above-the-fold.png` (zonder popup).
 
+**Voorraadmelding** (`stockAlert`): een knop direct onder de koopknop ("Mail mij als dit product weer op voorraad is") die een popup opent waarin de bezoeker zijn e-mailadres achterlaat. Staat het onderdeel aan, dan komt hij er altijd in, bij elk bezoekersprofiel: de AI past alleen de teksten aan en kan hem niet per profiel uitzetten (dat kan alleen met het vinkje, of `"stockAlert": false` in een config). Plek, in volgorde: onder de koopknop, onder de prijs, onder de titel, vóór het eerste blok van de pagina, en als laatste vangnet zwevend rechtsonder; de log en `persona.json` (`meta.stockAlertPlacement`) zeggen welke. Teksten: `stockAlert: { button, headline, sub, cta }`. Extra bestanden: `04-stockalert.png` (PDP met geopende popup), `03-detail-stockalert-knop.png` en `03-detail-stockalert.png`.
+
+**Checkoutpagina en kassakoopjes** (`checkoutUrl`, `checkoutDeals`): vul optioneel de URL van de winkelwagen- of checkoutpagina in. De generator legt dan eerst het product van de PDP in de winkelwagen (kiest zo nodig de eerste beschikbare maat) en maakt daarna een demo van die pagina met onderaan de **kassakoopjes**: een raster met de goedkoopste producten die op de site gevonden zijn (standaard 6, 3 per rij; op mobiel 2 per rij). Het onderdeel "Kassakoopjes" is in de webapp pas aan te vinken als de checkout-URL is ingevuld; zonder checkoutUrl staat het altijd uit. Lukt het vullen van de winkelwagen niet, dan komen de kassakoopjes op de (lege) winkelwagenpagina. Titel en aantal: `checkoutDeals: { title, count }`. De checkoutpagina wordt per bezoekersprofiel gemaakt: de AI schrijft per profiel een eigen kassakoopjes-titel en eigen teksten voor "mail mijn winkelwagen" (aan te passen in de editor). Bestanden: `checkout-01-kassakoopjes.png`, `checkout-02-fullpage.png` en `checkout-03-detail-kassakoopjes.png`, bij meerdere profielen met voorvoegsel `v1-`, `v2-`, ...; de one-pager van elk profiel krijgt een blok Kassakoopjes.
+
+**Mail mijn winkelwagen** (`mailCart`): op dezelfde checkoutpagina een knop onder de afrekenknop ("Mail mijn winkelwagen naar mezelf") die een popup opent waarin de bezoeker zijn e-mailadres invult om de producten in zijn winkelwagen naar zichzelf te mailen. Zelfde stijl als de voorraadmelding. Net als de kassakoopjes alleen aan te vinken met een checkout-URL; de twee staan los van elkaar aan of uit. Plek, in volgorde: onder de afrekenknop, boven de kassakoopjes, onder de titel, en als vangnet zwevend rechtsonder (`meta.mailCartPlacement`). Teksten: `mailCart: { button, headline, sub, cta }`. Bestanden: `checkout-04-mailcart.png` (met geopende popup), `checkout-03-detail-mailcart-knop.png` en `checkout-03-detail-mailcart.png`.
+
 ### Bezoekersprofielen (persoonlijke versies)
 
 De AI bepaalt het type shop/product en bedenkt 2–3 bezoekersprofielen (bijv. "Nieuwe anonieme bezoeker", "Bekende koopjesjager", "Vaste loyale klant die minder ontvankelijk is voor korting"). Per profiel krijg je een eigen versie van popup (met een incentive die past bij de sector en het profiel, niet standaard "10% korting"), sticky bar, social proof, carrouseltitel en spaarpunten, plus een uitleg **wat er verandert en waarom**. Bestanden hebben het voorvoegsel `v1-`, `v2-`, ... In de webapp: tabs per profiel; kies het aantal profielen of vul eigen profielen in (één per regel). Bewerk je een profiel en klik "Opnieuw genereren", dan blijven de andere profielen ongewijzigd (geen nieuwe AI-tekst). In een config: `profileCount` (1–3) en `profileHints` (lijst met namen); zonder AI-sleutel krijg je één standaardversie.
 
 AI-aanroepen proberen het opnieuw bij een rate limit (429) en vallen daarna terug op een tweede goedkoop model (`OPENROUTER_FALLBACK_MODEL`, standaard `openai/gpt-4o-mini`).
+
+### Handmatige screenshots (als de site het ophalen blokkeert)
+
+Sommige sites blokkeren de generator (Cloudflare, bot-detectie, vooral vanaf Netlify). Upload dan zelf een screenshot van de **volledige pagina** in het formulier onder "Handmatige screenshots":
+
+- **PDP**: vervangt het ophalen van de PDP-URL (die mag dan leeg blijven). Alle blokken (popup, sticky bar, carrousel, social proof, spaarpunten, story-rij) komen over de screenshot heen.
+- **Categoriepagina**: levert een eigen demo met popup, sticky bar, story-rij en een carrousel "Aanbevolen voor jou" boven het productoverzicht (bestanden `cat-*.png`). Social proof en spaarpunten horen bij één product en vallen hier af. Werkt ook naast een live opgehaalde PDP.
+
+Screenshot maken: Chrome → DevTools → ⋮ → *Run command* → "Capture full size screenshot", of een extensie als GoFullPage. Klik eerst de cookiebanner weg. Een screenshot van een telefoon wordt automatisch mobiel weergegeven.
+
+Hoe het werkt (`lib/screenshot.js`): een AI met beeldherkenning (`OPENROUTER_VISION_MODEL`, standaard `google/gemini-2.5-flash`) leest titel, prijs, verzendteksten, kleuren, secties, producttegels en de plek van titel en koopknop uit het beeld; een tweede, scherpere blik op het stuk rond de titel maakt die posities nauwkeuriger. Daarna wordt de screenshot in stroken omgezet naar een nagebootste pagina met een echte (onzichtbare) titel, koopknop en secties, zodat de gewone injectie werkt: blokken onder de koopknop duwen de rest van de infokolom omlaag. Producttegels worden uit de screenshot geknipt voor carrousel en story-rij. Plaatsing is een benadering; zonder AI-sleutel komen social proof en spaarpunten niet op de pagina.
+
+De browser zet de screenshot vóór het uploaden om naar JPEG (max. 2880 px breed en ±16 megapixel) en uploadt in delen van 1,5 MB (`/api/upload`). Opnieuw genereren en doorprompten gebruiken dezelfde upload. In een config (CLI): `"screenshots": { "pdp": "pad.png", "category": "pad.png" }`, relatief aan het configbestand.
 
 ### Eigen instructies en doorprompten
 

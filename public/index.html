@@ -86,6 +86,8 @@
       <input id="url" type="url" required placeholder="https://www.prospect.nl/product">
       <label for="catalogUrl">Categorie-URL <small>(optioneel, voor de carrousel)</small></label>
       <input id="catalogUrl" type="url" placeholder="https://www.prospect.nl/categorie">
+      <label for="checkoutUrl">Checkout-URL <small>(optioneel, winkelwagen- of checkoutpagina voor kassakoopjes en "mail mijn winkelwagen")</small></label>
+      <input id="checkoutUrl" type="url" placeholder="https://www.prospect.nl/winkelwagen">
       <label class="check"><input type="checkbox" id="autoCopy" checked> <span>Teksten automatisch op een persona schrijven <small>(AI bepaalt producttype en doelgroep)</small></span></label>
       <label class="check"><input type="checkbox" id="customAccent"> <span>Accentkleur zelf kiezen <small>(anders van de koopknop)</small></span></label>
       <input id="accent" type="color" value="#16a34a" class="hide" style="margin-top:6px;height:36px;width:80px;padding:2px">
@@ -109,6 +111,9 @@
         <label class="check" style="margin-top:4px"><input type="checkbox" data-part="carousel" checked> <span>Carrousel</span></label>
         <label class="check" style="margin-top:4px"><input type="checkbox" data-part="loyalty" checked> <span>Spaarpunten</span></label>
         <label class="check" style="margin-top:4px"><input type="checkbox" data-part="storyRow" checked> <span>Story-rij</span></label>
+        <label class="check" style="margin-top:4px"><input type="checkbox" data-part="stockAlert" checked> <span>Voorraadmelding</span></label>
+        <label class="check" style="margin-top:4px" id="checkoutDealsLabel" title="Vul eerst een checkout-URL in"><input type="checkbox" data-part="checkoutDeals" disabled> <span>Kassakoopjes <small>(checkoutpagina)</small></span></label>
+        <label class="check" style="margin-top:4px" id="mailCartLabel" title="Vul eerst een checkout-URL in"><input type="checkbox" data-part="mailCart" disabled> <span>Mail mijn winkelwagen <small>(checkoutpagina)</small></span></label>
       </div>
       <button class="full" id="go">Genereer demo</button>
       <div class="err" id="formErr"></div>
@@ -183,6 +188,31 @@
         <div><label>Naam programma <small>(leeg = "&lt;merk&gt; Members")</small></label><input type="text" data-k="loyalty.programName"></div>
         <div><label>Huidige punten van de klant</label><input type="text" data-k="loyalty.currentPoints"></div>
       </div>
+      <label style="margin-top:18px">Voorraadmelding <small>(staat bij elk profiel; aan/uit via "Onderdelen" links)</small></label>
+      <div class="grid2">
+        <div><label>Knop op de PDP</label><input type="text" data-k="stockAlert.button"></div>
+        <div><label>Popup: kop</label><input type="text" data-k="stockAlert.headline"></div>
+      </div>
+      <label>Popup: tekst</label><textarea rows="2" data-k="stockAlert.sub"></textarea>
+      <div class="grid2">
+        <div><label>Popup: knop</label><input type="text" data-k="stockAlert.cta"></div>
+      </div>
+      <div id="checkoutFields" class="hide">
+        <label style="margin-top:18px">Checkoutpagina <small>(per profiel; aan/uit via "Onderdelen" links)</small></label>
+        <div class="grid2">
+          <div id="dealsField"><label>Kassakoopjes: titel</label><input type="text" data-k="checkoutDeals.title"></div>
+        </div>
+        <div id="mailFields">
+          <div class="grid2">
+            <div><label>Mail mijn winkelwagen: knop</label><input type="text" data-k="mailCart.button"></div>
+            <div><label>Popup: kop</label><input type="text" data-k="mailCart.headline"></div>
+          </div>
+          <label>Popup: tekst</label><textarea rows="2" data-k="mailCart.sub"></textarea>
+          <div class="grid2">
+            <div><label>Popup: knop</label><input type="text" data-k="mailCart.cta"></div>
+          </div>
+        </div>
+      </div>
       <p class="hint">Let op: kortingspercentage, code, het aantal bezoekers en de spaarpunten van de klant zijn voorbeeldwaarden voor de demo.</p>
       <button class="full" id="regen">Opnieuw genereren met mijn teksten</button>
     </div>
@@ -223,9 +253,28 @@ function showApp() { $('app').style.display = 'grid'; loadHistory(); }
 
 /* ---------- formulier ---------- */
 $('customAccent').addEventListener('change', e => $('accent').classList.toggle('hide', !e.target.checked));
+// Kassakoopjes en "mail mijn winkelwagen" horen bij de checkoutpagina: altijd zichtbaar,
+// maar pas aan te vinken als de checkout-URL is ingevuld
+function syncCheckoutDeals(turnOn) {
+  const has = !!$('checkoutUrl').value.trim();
+  for (const [part, labelId] of [['checkoutDeals', 'checkoutDealsLabel'], ['mailCart', 'mailCartLabel']]) {
+    const box = document.querySelector(`#parts input[data-part="${part}"]`);
+    const wasDisabled = box.disabled;
+    box.disabled = !has;
+    if (!has) box.checked = false;
+    else if (turnOn && wasDisabled) box.checked = true; // net ingevuld: standaard aan
+    $(labelId).style.opacity = has ? '1' : '.5';
+    $(labelId).title = has ? '' : 'Vul eerst een checkout-URL in';
+  }
+}
+// ook bij plakken, automatisch aanvullen door de browser en terugkeren naar de pagina (die vuren niet altijd 'input')
+for (const ev of ['input', 'change', 'paste', 'blur']) $('checkoutUrl').addEventListener(ev, () => setTimeout(() => syncCheckoutDeals(true), 0));
+window.addEventListener('pageshow', () => syncCheckoutDeals(false));
+syncCheckoutDeals(false);
+setTimeout(() => syncCheckoutDeals(false), 600); // na het herstellen van formulierwaarden door de browser
 
 function readForm() {
-  const input = { name: $('name').value.trim(), url: $('url').value.trim(), catalogUrl: $('catalogUrl').value.trim(), autoCopy: $('autoCopy').checked };
+  const input = { name: $('name').value.trim(), url: $('url').value.trim(), catalogUrl: $('catalogUrl').value.trim(), checkoutUrl: $('checkoutUrl').value.trim(), autoCopy: $('autoCopy').checked };
   if ($('customAccent').checked) input.accentColor = $('accent').value;
   input.disable = disabledParts();
   if ($('device').value) input.device = $('device').value;
@@ -326,7 +375,7 @@ async function poll(id, t0) {
   $('log').textContent = (s.log || []).join('\n');
   $('log').scrollTop = 1e9;
   const secs = Math.round((Date.now() - s.startedAt) / 1000);
-  if (s.state === 'running') setState('run', `Bezig… ${secs}s`);
+  if (s.state === 'running') setState('run', s.waiting ? 'Wacht op jou: los de controle op in het Chrome-venster' : `Bezig… ${secs}s`);
   else if (s.state === 'error') fail(s.error || 'Er ging iets mis');
   else if (s.state === 'done') { clearInterval(pollTimer); setBusy(false); setState('ok', 'Klaar'); showResult(s); loadHistory(); }
   if (Date.now() - s.startedAt > 16 * 60 * 1000 && s.state === 'running') fail('De taak duurt te lang en is waarschijnlijk afgebroken.');
@@ -349,6 +398,9 @@ const LABELS = {
   '01-popup.png': 'Hero: PDP met popup', '01b-above-the-fold.png': 'Boven de vouw (zonder popup)', '02-fullpage.png': 'Volledige pagina', '03-detail-carousel.png': 'Carrousel',
   '03-detail-popup.png': 'Popup', '03-detail-socialproof.png': 'Social proof', '03-detail-stickybar.png': 'Sticky bar',
   '03-detail-loyalty.png': 'Spaarpunten', '03-detail-story.png': 'Story-rij',
+  '03-detail-stockalert-knop.png': 'Voorraadmelding: knop', '03-detail-stockalert.png': 'Voorraadmelding: popup', '04-stockalert.png': 'PDP met voorraadmelding',
+  'checkout-01-kassakoopjes.png': 'Checkout met kassakoopjes', 'checkout-02-fullpage.png': 'Checkout: volledige pagina', 'checkout-03-detail-kassakoopjes.png': 'Kassakoopjes',
+  'checkout-04-mailcart.png': 'Checkout met "mail mijn winkelwagen"', 'checkout-03-detail-mailcart-knop.png': 'Mail mijn winkelwagen: knop', 'checkout-03-detail-mailcart.png': 'Mail mijn winkelwagen: popup',
   'onepager.pdf': 'One-pager (PDF)', 'onepager.png': 'One-pager (PNG)', 'onepager.html': 'One-pager (HTML)',
 };
 const fileUrl = (id, name, dl) => `/api/file?id=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}${dl ? '&download=1' : ''}`;
@@ -434,7 +486,8 @@ function renderFiles(s, prefix) {
   const files = $('files'); files.replaceChildren();
   const order = Object.keys(LABELS);
   // bestanden van dit profiel hebben het voorvoegsel (v1-, v2-, ...); bij één versie hebben ze geen voorvoegsel
-  const baseName = n => prefix ? (n.startsWith(prefix) ? n.slice(prefix.length) : null) : (/^v[0-9]+-/.test(n) ? null : n);
+  // de checkoutpagina wordt één keer gemaakt en hoort bij elk profiel
+  const baseName = n => n.startsWith('checkout-') ? n : prefix ? (n.startsWith(prefix) ? n.slice(prefix.length) : null) : (/^v[0-9]+-/.test(n) ? null : n);
   const list = (s.files || []).map(f => ({ ...f, base: baseName(f.name) })).filter(f => f.base && LABELS[f.base])
     .sort((a, b) => order.indexOf(a.base) - order.indexOf(b.base));
   for (const f of list) {
@@ -448,6 +501,14 @@ function renderFiles(s, prefix) {
 
 function loadEditor(pr) {
   $('editingName').textContent = state.profiles.length > 1 ? `· ${pr.name}` : '';
+  // velden voor de checkoutpagina alleen als deze demo een checkoutpagina heeft (en het onderdeel aan stond)
+  const inp = (state.s && state.s.input) || {};
+  const off = inp.disable || [];
+  const deals = !!inp.checkoutUrl && !off.includes('checkoutDeals');
+  const mail = !!inp.checkoutUrl && !off.includes('mailCart');
+  $('checkoutFields').classList.toggle('hide', !deals && !mail);
+  $('dealsField').classList.toggle('hide', !deals);
+  $('mailFields').classList.toggle('hide', !mail);
   $('editor').classList.remove('hide');
   document.querySelectorAll('#editor [data-k]').forEach(i => {
     const [b, f] = i.dataset.k.split('.');
@@ -495,11 +556,15 @@ async function openJob(it) {
   const inp = s.input || {};
   lastInput = { name: s.name, url: s.url };
   if (inp.catalogUrl) lastInput.catalogUrl = inp.catalogUrl;
+  if (inp.checkoutUrl) lastInput.checkoutUrl = inp.checkoutUrl;
   if (inp.device) lastInput.device = inp.device;
   if (inp.accentColor) lastInput.accentColor = inp.accentColor;
   if (inp.disable && inp.disable.length) lastInput.disable = inp.disable;
   $('catalogUrl').value = inp.catalogUrl || ''; $('device').value = inp.device || '';
+  $('checkoutUrl').value = inp.checkoutUrl || '';
   document.querySelectorAll('#parts input[data-part]').forEach(c => { c.checked = !(inp.disable || []).includes(c.dataset.part); });
+  if (!inp.checkoutUrl) document.querySelector('#parts input[data-part="mailCart"]').checked = false;
+  syncCheckoutDeals(false);
   ['empty', 'result', 'editor', 'refineCard'].forEach(x => $(x).classList.add('hide'));
   $('progress').classList.remove('hide');
   $('log').textContent = (s.log || []).join('\n');
